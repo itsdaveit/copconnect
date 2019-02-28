@@ -1,0 +1,18 @@
+include MANIFEST.in
+include requirements.txt
+include *.json
+include *.md
+include *.py
+include *.txt
+recursive-include copconnect *.css
+recursive-include copconnect *.csv
+recursive-include copconnect *.html
+recursive-include copconnect *.ico
+recursive-include copconnect *.js
+recursive-include copconnect *.json
+recursive-include copconnect *.md
+recursive-include copconnect *.png
+recursive-include copconnect *.py
+recursive-include copconnect *.svg
+recursive-include copconnect *.txt
+recursive-exclude copconnect *.pyc
