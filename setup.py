@@ -17,7 +17,7 @@ with open('copconnect/__init__.py', 'rb') as f:
 setup(
 	name='copconnect',
 	version=version,
-	description='Importing Tool for COP',
+	description='Importing Tool for cop agent from cop software + services GmbH & Co. KG',
 	author='itsdave GmbH',
 	author_email='dev@itsdave.de',
 	packages=find_packages(),

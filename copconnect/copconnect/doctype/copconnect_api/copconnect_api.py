@@ -35,7 +35,7 @@ class COPConnectAPI(Document):
         return suppliers_list
 
     def set_COPSuppliers(self, suppliers_dict):
-        #Fügt "COP Lieferant" ein und aktualisiert, wenn Änderungen gefnuden werden.
+        #Fügt "COP Lieferant" ein und aktualisiert, wenn Änderungen gefunden werden.
         #Die Lieferanten ID aus COP wird als Index verwendet
         count_COP_Lieferanten = 0
         for supplier in suppliers_dict:
@@ -122,29 +122,40 @@ class COPConnectAPI(Document):
                 "extra_amount2": supplier["extra_amount2"],
                 "extra_type2": supplier["extra_type2"],
                 })
-                print item_doc.insert().sup_name + " Angelegt"
+                print(item_doc.insert().sup_name + " Angelegt")
                 count_COP_Lieferanten += 1
 
         return count_COP_Lieferanten
 
 
     def set_ERPNextSuppliers(self):
+        COPConnect_settings = frappe.get_doc("COPConnect Settings")
         count_ERPNextSuppliers = 0
 
         found_COP_Lieferanten = frappe.get_all("COP Lieferant")
         if len(found_COP_Lieferanten) >= 1:
-            found_ERPNext_Suppliers = frappe.get_all("Supplier", filters={"supplier_type": "COP Lieferant" })
+            found_ERPNext_Suppliers = frappe.get_all("Supplier", filters={"supplier_group": COPConnect_settings.destination_supplier_group })
             count_ERPNextSuppliers = len(found_ERPNext_Suppliers)
             for COP_Lieferant in found_COP_Lieferanten:
                 COP_Lieferant_doc = frappe.get_doc("COP Lieferant", COP_Lieferant.name)
 
                 if COP_Lieferant_doc.supplier == None:
-                    supplier_doc = frappe.get_doc({"doctype": "Supplier",
-                    "supplier_name": COP_Lieferant_doc.sup_company,
-                    "supplier_type": "COP Lieferant",})
-                    inerted_ERPNext_Supplier = supplier_doc.insert()
-                    COP_Lieferant_doc.supplier = inerted_ERPNext_Supplier.name
-                    COP_Lieferant_doc.save()
+                    #check if a there is allready an erpnext-supplier with same name
+                    previous_existing_erpnext_supplier = frappe.get_all("Supplier", filters={"supplier_name": COP_Lieferant_doc.sup_company})
+                    if len(previous_existing_erpnext_supplier) > 1:
+                        frappe.throw("Name für Lieferant " + COP_Lieferant_doc.sup_company + " mehrfach vorhanden. Bitte manuell zuweisen.")
+                    if len(previous_existing_erpnext_supplier) == 1:
+                        ERPNext_Supplier_doc = frappe.get_doc("Supplier", previous_existing_erpnext_supplier[0])
+                        COP_Lieferant_doc.supplier = ERPNext_Supplier_doc.name
+                        COP_Lieferant_doc.save()
+                    else:
+                        supplier_doc = frappe.get_doc({"doctype": "Supplier",
+                        "supplier_name": COP_Lieferant_doc.sup_company,
+                        "supplier_type": "Company",
+                        "supplier_group": COPConnect_settings.destination_supplier_group})
+                        inerted_ERPNext_Supplier = supplier_doc.insert()
+                        COP_Lieferant_doc.supplier = inerted_ERPNext_Supplier.name
+                        COP_Lieferant_doc.save()
 
                 else:
                     change_detected = False
@@ -163,8 +174,8 @@ class COPConnectAPI(Document):
 
     def cop_getSuppliers(self):
         COPConnect_settings = frappe.get_doc("COPConnect Settings")
-        COPClient = Client(COPConnect_settings.cop_wsdl_url, strict=False)
-
+        #COPClient = Client(COPConnect_settings.cop_wsdl_url, strict=False)
+        COPClient = Client(COPConnect_settings.cop_wsdl_url)
         request_data = {
         "username": COPConnect_settings.cop_user,
         "password": COPConnect_settings.cop_password,
