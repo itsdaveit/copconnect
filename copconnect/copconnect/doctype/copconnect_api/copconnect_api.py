@@ -152,10 +152,14 @@ class COPConnectAPI(Document):
                         supplier_doc = frappe.get_doc({"doctype": "Supplier",
                         "supplier_name": COP_Lieferant_doc.sup_company,
                         "supplier_type": "Company",
-                        "supplier_group": COPConnect_settings.destination_supplier_group})
+                        "supplier_group": COPConnect_settings.destination_supplier_group,
+                        "represents_company": None})
+
+        
                         inerted_ERPNext_Supplier = supplier_doc.insert()
                         COP_Lieferant_doc.supplier = inerted_ERPNext_Supplier.name
                         COP_Lieferant_doc.save()
+
 
                 else:
                     change_detected = False
