@@ -51,8 +51,13 @@ class COPConnectimports(Document):
 
     def process_file(self, current_file, path, COPConnect_settings, create_po=False):
         csv_headers = {}
+<<<<<<< HEAD
         csv_headers['COP_note'] = ['map_id', 'man_name', 'man_aid', 'product_quality', 'desc_short', 'price_min', 'price_special', 'qty_status_max', 'item_remarks', 'user_name', 'sup_name', 'sup_id', 'sup_aid', 'price_amount', 'qty_status', 'item_qty', 'vk_netto']
         csv_headers['COP_order'] = ['map_id', 'sup_name', 'sup_id', 'sup_aid', 'man_name', 'man_aid', 'product_quality', 'desc_short', 'ean', 'price_requested', 'price_confirmed', 'qty_requested', 'qty_confirmed', 'qty_delivered', 'item_remark', 'user_name', 'reference', 'customer_po', 'order_name', 'order_date', 'response_date', 'order_status', 'project_id', 'price_invoiced', 'qty_invoiced']
+=======
+        csv_headers['COP_note'] = ["map_id", "man_name", "man_aid", "desc_short", "price_min", "price_special", "qty_status_max", "item_remarks", "user_name", "sup_name", "sup_id", "sup_aid", "price_amount", "qty_status", "item_qty", "vk_netto"]
+        csv_headers['COP_order'] = ["map_id", "sup_name", "sup_id", "sup_aid", "man_name", "man_aid", "desc_short", "ean", "price_requested", "price_confirmed", "qty_requested", "qty_confirmed", "qty_delivered", "item_remark", "user_name", "reference", "customer_po", "order_name", "order_date", "response_date", "order_status", "project_id", "price_invoiced", "qty_invoiced"]
+>>>>>>> db1984a1e3769f8407c2888b4fffbaf2d931750a
         csv_file = os.path.join(path, current_file)
         #print("processing " + csv_file)
         #COP Merkzettel
@@ -69,8 +74,13 @@ class COPConnectimports(Document):
         COPConnect_settings = frappe.get_doc("COPConnect Settings")
         #CSV Headers, which we expect
         csv_headers = {}
+<<<<<<< HEAD
         csv_headers['COP_note'] = ['map_id', 'man_name', 'man_aid', 'product_quality', 'desc_short', 'price_min', 'price_special', 'qty_status_max', 'item_remarks', 'user_name', 'sup_name', 'sup_id', 'sup_aid', 'price_amount', 'qty_status', 'item_qty', 'vk_netto']
         csv_headers['COP_order'] = ['map_id', 'sup_name', 'sup_id', 'sup_aid', 'man_name', 'man_aid', 'product_quality', 'desc_short', 'ean', 'price_requested', 'price_confirmed', 'qty_requested', 'qty_confirmed', 'qty_delivered', 'item_remark', 'user_name', 'reference', 'customer_po', 'order_name', 'order_date', 'response_date', 'order_status', 'project_id', 'price_invoiced', 'qty_invoiced']
+=======
+        csv_headers['COP_note'] = ["map_id", "man_name", "man_aid", "desc_short", "price_min", "price_special", "qty_status_max", "item_remarks", "user_name", "sup_name", "sup_id", "sup_aid", "price_amount", "qty_status", "item_qty", "vk_netto"]
+        csv_headers['COP_order'] = ["map_id", "sup_name", "sup_id", "sup_aid", "man_name", "man_aid", "desc_short", "ean", "price_requested", "price_confirmed", "qty_requested", "qty_confirmed", "qty_delivered", "item_remark", "user_name", "reference", "customer_po", "order_name", "order_date", "response_date", "order_status", "project_id", "price_invoiced", "qty_invoiced"]
+>>>>>>> db1984a1e3769f8407c2888b4fffbaf2d931750a
 
 
         if COPConnect_settings.csv_import_folder != "":
