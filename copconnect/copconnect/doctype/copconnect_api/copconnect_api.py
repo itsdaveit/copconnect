@@ -8,10 +8,85 @@ from frappe.model.document import Document
 from zeep import Client
 from zeep.plugins import HistoryPlugin
 import xml.etree.ElementTree as ET
-import pprint
+from pprint import pprint
+from copconnect.api import CopAPI
+import requests
+from frappe.core.doctype.file.file import create_new_folder
+from frappe.utils.file_manager import save_file
+from six import BytesIO
 
 
 class COPConnectAPI(Document):
+
+    def create_folder(self, folder, parent):
+        """Make sure the folder exists and return it's name."""
+        new_folder_name = "/".join([parent, folder])
+        
+        if not frappe.db.exists("File", new_folder_name):
+            create_new_folder(folder, parent)
+        
+        return new_folder_name
+
+    def get_item_images(self):
+        settings = frappe.get_doc("COPConnect Settings")
+        api = CopAPI(
+            settings.cop_wsdl_url, settings.cop_user, settings.cop_password
+            )
+        i = str(self.item)
+        if i.startswith("MAPID-"):
+            map_id = i[6:]
+            r = api.getArticlesContent(map_id)["item"]
+            for el in r:
+                if el["sup_name"] == "cop media":
+                    with requests.Session() as s:
+                        d = s.get(el["url_pic"])
+                        buffer = BytesIO(d.content)
+                        itemdoc = frappe.get_doc("Item", self.item)
+
+                        doctype_folder = self.create_folder("Item", "Home")
+                        title_folder = self.create_folder("title-images", doctype_folder)
+
+                        filename = "title_image_" + self.item + ".jpg"
+                        files = frappe.get_all("File", filters= {"file_name": filename})
+                        if not files:
+                            if not frappe.db.exists("File", filename):
+                                rv = save_file(filename, buffer.getvalue(), "Item",
+                                            self.item, title_folder, is_private=1)
+                            if not itemdoc.image == rv.file_url:
+                                itemdoc.image = rv.file_url
+                                itemdoc.save()
+
+        else:
+            frappe.throw("Artielnummer muss mit MAPID- anfangen.")
+        
+    def get_item_datasheet(self):
+        settings = frappe.get_doc("COPConnect Settings")
+        api = CopAPI(
+            settings.cop_wsdl_url, settings.cop_user, settings.cop_password
+            )
+        i = str(self.item)
+        if i.startswith("MAPID-"):
+            map_id = i[6:]
+            r = api.getArticlesContent(map_id)["item"]
+            for el in r:
+                if el["sup_name"] == "cop media":
+                    with requests.Session() as s:
+                        d = s.get(el["url_pdf"])
+                        buffer = BytesIO(d.content)
+                        doctype_folder = self.create_folder("Item", "Home")
+                        title_folder = self.create_folder("datasheets", doctype_folder)
+                        filename = "datasheet_" + self.item + ".pdf"
+                        files = frappe.get_all("File", filters= {"file_name": filename})
+                        if not files:
+                            rv = save_file(filename, buffer.getvalue(), "Item",
+                                           self.item, title_folder, is_private=1)
+
+        else:
+            frappe.throw("Artielnummer muss mit MAPID- anfangen.")
+
+            
+
+
 
     def process_COP_getSuppliers_Response(self, suppliers_response):
         suppliers_list = []
