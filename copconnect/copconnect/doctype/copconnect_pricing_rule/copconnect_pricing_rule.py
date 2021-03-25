@@ -6,5 +6,6 @@ from __future__ import unicode_literals
 import frappe
 from frappe.model.document import Document
 
-class COPConnectPricingTable(Document):
-	pass
+class COPConnectPricingRule(Document):
+	def autoname(self):
+		self.name = "COPPR-" + str(self.from_price)

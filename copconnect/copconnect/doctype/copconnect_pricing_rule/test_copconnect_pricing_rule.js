@@ -2,15 +2,15 @@
 // rename this file from _test_[name] to test_[name] to activate
 // and remove above this line
 
-QUnit.test("test: COPConnect Pricing Table", function (assert) {
+QUnit.test("test: COPConnect Pricing Rule", function (assert) {
 	let done = assert.async();
 
 	// number of asserts
 	assert.expect(1);
 
 	frappe.run_serially([
-		// insert a new COPConnect Pricing Table
-		() => frappe.tests.make('COPConnect Pricing Table', [
+		// insert a new COPConnect Pricing Rule
+		() => frappe.tests.make('COPConnect Pricing Rule', [
 			// values to be set
 			{key: 'value'}
 		]),

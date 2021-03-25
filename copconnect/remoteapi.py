@@ -5,7 +5,10 @@ import frappe
 
 
 def importitem(map_id):
-    return "Artikel mit Map ID " + map_id + " importiert."
+    text = "Artikel mit Map ID " + map_id + " importiert."
+    print(text)
+    return text
+
 
 
 @frappe.whitelist()

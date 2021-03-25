@@ -6,8 +6,15 @@
  "field_order": [
   "getsuppliers",
   "artikel_operationen_section",
+  "artikel_anlage_section",
+  "cop_map_id",
+  "column_break_5",
+  "get_item",
+  "bestehende_artikel_section",
   "item",
+  "column_break_9",
   "get_item_images",
+  "column_break_11",
   "get_item_datasheet"
  ],
  "fields": [
@@ -39,10 +46,43 @@
    "fieldtype": "Button",
    "label": "Datenblatt herunterladen",
    "options": "get_item_datasheet"
+  },
+  {
+   "fieldname": "get_item",
+   "fieldtype": "Button",
+   "label": "Artikel anlegen",
+   "options": "get_item"
+  },
+  {
+   "fieldname": "artikel_anlage_section",
+   "fieldtype": "Section Break",
+   "label": "Artikel Anlage"
+  },
+  {
+   "fieldname": "cop_map_id",
+   "fieldtype": "Int",
+   "label": "COP Map ID"
+  },
+  {
+   "fieldname": "column_break_5",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "bestehende_artikel_section",
+   "fieldtype": "Section Break",
+   "label": "Bestehende Artikel"
+  },
+  {
+   "fieldname": "column_break_9",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_11",
+   "fieldtype": "Column Break"
   }
  ],
  "issingle": 1,
- "modified": "2021-02-03 23:40:28.322648",
+ "modified": "2021-02-26 22:33:48.335719",
  "modified_by": "Administrator",
  "module": "COPConnect",
  "name": "COPConnect API",

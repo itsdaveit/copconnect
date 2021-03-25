@@ -18,6 +18,9 @@ from six import BytesIO
 
 class COPConnectAPI(Document):
 
+    
+    settings = frappe.get_single("COPConnect Settings")
+
     def create_folder(self, folder, parent):
         """Make sure the folder exists and return it's name."""
         new_folder_name = "/".join([parent, folder])
@@ -26,9 +29,50 @@ class COPConnectAPI(Document):
             create_new_folder(folder, parent)
         
         return new_folder_name
+    
+    def get_item(self, map_id=False):
+        settings = frappe.get_doc("COPConnect Settings")
+        api = CopAPI(
+            settings.cop_wsdl_url, settings.cop_user, settings.cop_password
+            )
+        if not map_id:
+            map_id = self.cop_map_id
+        
+        if frappe.get_all("Item", filters={"name": "MAPID-" + str(map_id)}):
+           frappe.throw("Artikel existiert bereits.")
+        else:
+            r = api.getArticles("mapid:" + str(map_id))
+            if r["rows"]["item"][0]:
+                cop_item_row = r["rows"]["item"][0]
+                #pprint(cop_item_row)
+                item_code = self._create_item(cop_item_row)
+                print("##### " + item_code)
+                self.item = item_code
+                self.get_item_images()
+                self.get_item_datasheet()
+
+
+    def _create_item(self,cop_item_row):
+        item_dict = self._get_item_dict(cop_item_row)
+        item_doc = frappe.get_doc(item_dict)
+        item_doc.save()
+        return item_doc.item_code
+
+    def _get_item_dict(self, cop_item_row):
+        item_fields_matching_table = {
+            "doctype": "Item",
+            "item_code": "MAPID-" + str(cop_item_row["map_id"]),
+            "item_name": str(cop_item_row["desc_short"])[:140],
+            "item_group": self.settings.destination_item_group,
+            "description": str(cop_item_row["desc_long"]),
+            }
+        return item_fields_matching_table
+
+
 
     def get_item_images(self):
-        settings = frappe.get_doc("COPConnect Settings")
+        settings = frappe.get_single("COPConnect Settings")
+        print = "#### " + self.item + " ####"
         api = CopAPI(
             settings.cop_wsdl_url, settings.cop_user, settings.cop_password
             )
@@ -60,7 +104,7 @@ class COPConnectAPI(Document):
             frappe.throw("Artielnummer muss mit MAPID- anfangen.")
         
     def get_item_datasheet(self):
-        settings = frappe.get_doc("COPConnect Settings")
+        settings = frappe.get_single("COPConnect Settings")
         api = CopAPI(
             settings.cop_wsdl_url, settings.cop_user, settings.cop_password
             )

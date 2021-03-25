@@ -25,8 +25,8 @@ def get_data():
                 },
                 {
                     "type": "doctype",
-                    "name": "COPConnect Pricing Table",
-                    "label": _("COPConnect Pricing Table"),
+                    "name": "COPConnect Pricing Rule",
+                    "label": _("COPConnect Pricing Rule"),
                 },
                 {
                     "type": "doctype",

@@ -1,0 +1,58 @@
+{
+ "creation": "2021-03-01 21:58:12.311175",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "from_price",
+  "calculation_factor",
+  "extra_charge"
+ ],
+ "fields": [
+  {
+   "fieldname": "from_price",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "From Price",
+   "set_only_once": 1
+  },
+  {
+   "fieldname": "extra_charge",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Extra Charge"
+  },
+  {
+   "fieldname": "calculation_factor",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Calculation Factor"
+  }
+ ],
+ "modified": "2021-03-01 22:28:38.215562",
+ "modified_by": "Administrator",
+ "module": "COPConnect",
+ "name": "COPConnect Pricing Rule",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "quick_entry": 1,
+ "sort_field": "from_price",
+ "sort_order": "ASC",
+ "track_changes": 1
+}
