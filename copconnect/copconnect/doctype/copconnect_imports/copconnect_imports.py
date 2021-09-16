@@ -15,7 +15,7 @@ import csv
 
 class COPConnectimports(Document):
 
-
+    @frappe.whitelist()
     def import_from_cop_server(self):
         COPConnect_settings = frappe.get_doc("COPConnect Settings")
         ftp = FTP(COPConnect_settings.ftp_host)
@@ -64,7 +64,7 @@ class COPConnectimports(Document):
 
 
 
-
+    @frappe.whitelist()
     def import_from_csv_folder(self):
         COPConnect_settings = frappe.get_doc("COPConnect Settings")
         #CSV Headers, which we expect
@@ -218,6 +218,7 @@ class COPConnectimports(Document):
                 print(csv_headers["COP_order"])
         return False
 
+    @frappe.whitelist()
     def import_orders_from_cop_server(self):
         COPConnect_settings = frappe.get_doc("COPConnect Settings")
         ftp = FTP(COPConnect_settings.ftp_host)
