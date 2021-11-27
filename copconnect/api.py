@@ -1,8 +1,6 @@
 from zeep import Client, Settings
 from zeep.plugins import HistoryPlugin
 import xml.etree.ElementTree as ET
-import pprint
-
 
 class CopAPI():
     def __init__(self, url, username, password):
@@ -35,20 +33,17 @@ class CopAPI():
         response = (self.api.service.getArticles(self.request_data))
         return response
 
-    def getArticlesSupplier(self, map_id):
+    def getArticlesSupplier(self, map_id, supp_ids=None):
         query = map_id
         self.request_data["map_id"] = query
         self.request_data["check_realtime"] = False
         self.request_data["check_projects"] = False
         self.request_data["additional_quality"] = True
-        self.request_data["sup_id"] = {"item": [3, 2, 1]}
-
-        
-        
-
-        
-        
-        
+        self.request_data["sup_id"] = {"item": supp_ids}        
         response = (self.api.service.getArticlesSupplier(self.request_data))
         return response
 
+        
+    def getGroups(self):
+        response = (self.api.service.getGroups(self.request_data))
+        return response

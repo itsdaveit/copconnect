@@ -1,0 +1,67 @@
+{
+ "cards_label": "Settings",
+ "category": "Modules",
+ "charts": [],
+ "creation": "2021-11-08 22:23:38.121477",
+ "developer_mode_only": 0,
+ "disable_user_customization": 0,
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "extends_another_page": 0,
+ "hide_custom": 0,
+ "idx": 0,
+ "is_default": 0,
+ "is_standard": 1,
+ "label": "COPConnect",
+ "links": [
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Lieferanten",
+   "link_to": "COP Lieferant",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Preiskalkulation",
+   "link_to": "COPConnect Pricing Rule",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Einstellungen",
+   "link_to": "COPConnect Settings",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2021-11-08 22:26:25.507607",
+ "modified_by": "Administrator",
+ "module": "COPConnect",
+ "name": "COPConnect",
+ "owner": "Administrator",
+ "pin_to_bottom": 0,
+ "pin_to_top": 0,
+ "shortcuts": [
+  {
+   "doc_view": "New",
+   "label": "Aktionen (API)",
+   "link_to": "COPConnect API",
+   "type": "DocType"
+  },
+  {
+   "doc_view": "New",
+   "label": "Aktionen (Lagacy)",
+   "link_to": "COPConnect imports",
+   "type": "DocType"
+  }
+ ],
+ "shortcuts_label": "COPConnect"
+}

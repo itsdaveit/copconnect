@@ -18,7 +18,6 @@ from six import BytesIO
 
 class COPConnectAPI(Document):
 
-    
     settings = frappe.get_single("COPConnect Settings")
 
     def create_folder(self, folder, parent):
@@ -153,6 +152,7 @@ class COPConnectAPI(Document):
             suppliers_list.append(supplier_dict)
         return suppliers_list
 
+    
     def set_COPSuppliers(self, suppliers_dict):
         #Fügt "COP Lieferant" ein und aktualisiert, wenn Änderungen gefunden werden.
         #Die Lieferanten ID aus COP wird als Index verwendet
@@ -294,7 +294,7 @@ class COPConnectAPI(Document):
 
             return count_ERPNextSuppliers
 
-
+    @frappe.whitelist()
     def cop_getSuppliers(self):
         COPConnect_settings = frappe.get_doc("COPConnect Settings")
         #COPClient = Client(COPConnect_settings.cop_wsdl_url, strict=False)
