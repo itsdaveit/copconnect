@@ -1,12 +1,17 @@
 {
+ "actions": [],
+ "autoname": "field:order",
  "creation": "2021-03-01 21:58:12.311175",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
+  "order",
   "from_price",
+  "to_price",
   "calculation_factor",
-  "extra_charge"
+  "extra_charge",
+  "item_group"
  ],
  "fields": [
   {
@@ -14,8 +19,7 @@
    "fieldtype": "Currency",
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "label": "From Price",
-   "set_only_once": 1
+   "label": "from Price"
   },
   {
    "fieldname": "extra_charge",
@@ -30,9 +34,32 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Calculation Factor"
+  },
+  {
+   "fieldname": "to_price",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "to Price"
+  },
+  {
+   "fieldname": "order",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Order",
+   "unique": 1
+  },
+  {
+   "fieldname": "item_group",
+   "fieldtype": "Link",
+   "label": "Item Group",
+   "options": "Item Group"
   }
  ],
- "modified": "2021-03-01 22:28:38.215562",
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2021-11-28 15:33:27.686547",
  "modified_by": "Administrator",
  "module": "COPConnect",
  "name": "COPConnect Pricing Rule",
@@ -52,7 +79,8 @@
   }
  ],
  "quick_entry": 1,
- "sort_field": "from_price",
+ "sort_field": "order",
  "sort_order": "ASC",
+ "title_field": "order",
  "track_changes": 1
 }
