@@ -18,7 +18,13 @@
   "supplier_settings",
   "destination_supplier_group",
   "min_level_for_supplier_part_no",
-  "price_list"
+  "min_level_for_selling_price",
+  "price_list_buying",
+  "price_list_selling",
+  "misc_settings_section",
+  "use_enqueue",
+  "get_datasheet",
+  "get_productimage"
  ],
  "fields": [
   {
@@ -81,24 +87,59 @@
   {
    "fieldname": "min_level_for_supplier_part_no",
    "fieldtype": "Int",
-   "label": "min Level f\u00fcr supplier_part_no"
-  },
-  {
-   "fieldname": "price_list",
-   "fieldtype": "Link",
-   "label": "Einkauf Preisliste",
-   "options": "Price List"
+   "label": "min Supplier Level f\u00fcr supplier_part_no"
   },
   {
    "fieldname": "base_url",
    "fieldtype": "Data",
    "label": "Base URL"
+  },
+  {
+   "fieldname": "price_list_selling",
+   "fieldtype": "Link",
+   "label": "Verkauf Preisliste",
+   "options": "Price List"
+  },
+  {
+   "fieldname": "price_list_buying",
+   "fieldtype": "Link",
+   "label": "Einkauf Preisliste",
+   "options": "Price List"
+  },
+  {
+   "fieldname": "min_level_for_selling_price",
+   "fieldtype": "Int",
+   "label": "min Supplier Level f\u00fcr Verkaufspreis"
+  },
+  {
+   "fieldname": "misc_settings_section",
+   "fieldtype": "Section Break",
+   "label": "Misc Settings"
+  },
+  {
+   "default": "0",
+   "description": "Frappe.enqueue f\u00fcr den Download von Anh\u00e4ngen verwenden, anstatt diese synchron auszuf\u00fchren.",
+   "fieldname": "use_enqueue",
+   "fieldtype": "Check",
+   "label": "Enqueue verwenden"
+  },
+  {
+   "default": "0",
+   "fieldname": "get_datasheet",
+   "fieldtype": "Check",
+   "label": "Datenbl\u00e4tter herunterladen"
+  },
+  {
+   "default": "0",
+   "fieldname": "get_productimage",
+   "fieldtype": "Check",
+   "label": "Produktbilder herunterladen"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2021-11-26 22:39:02.317896",
+ "modified": "2021-11-28 22:18:12.774721",
  "modified_by": "Administrator",
  "module": "COPConnect",
  "name": "COPConnect Settings",

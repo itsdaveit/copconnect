@@ -7,5 +7,4 @@ import frappe
 from frappe.model.document import Document
 
 class COPConnectPricingRule(Document):
-	def autoname(self):
-		self.name = "COPPR-" + str(self.from_price)
+	pass

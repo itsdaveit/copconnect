@@ -1,27 +1,29 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from pprint import pprint
 import re
 from warnings import filters
 from attr import fields
 import frappe
 from copconnect.api import CopAPI
+from frappe.sessions import get
+from psycopg2.extensions import NoneAdapter
 import requests
 from frappe.core.doctype.file.file import create_new_folder
 from frappe.utils.file_manager import save_file, get_content_hash
 from frappe import enqueue
 from six import BytesIO
 from pprint import pprint
-import datetime
 import time
+from frappe import _
 
 @frappe.whitelist()
 def importitem(map_id):
-    start_dt = datetime.datetime.now()
+    start_dt = datetime.now()
     settings = frappe.get_doc("COPConnect Settings")
     text = "Artikel mit Map ID " + map_id + " importiert."
-    result = get_item(map_id)
+    result = get_item(map_id, start_dt)
     return_massage = "Artikel <a href=\"" + settings.base_url + "app/item/MAPID-" + map_id + "\" target=\"_blank\">MAPID-" + map_id + "</a> angelegt."
-    end_dt = datetime.datetime.now()
+    end_dt = datetime.now()
     time = end_dt - start_dt
     return return_massage + " (" + str(round(time.total_seconds(),3)) + " s)"
 
@@ -39,7 +41,7 @@ def importnote(note_id, customer_id=None):
 Erstellen oder aktualisieren von Artikel wird über get_item durchgeführt.
 """
 
-def get_item(map_id):
+def get_item(map_id, start_dt):
     settings = frappe.get_doc("COPConnect Settings")
     api = CopAPI(settings.cop_wsdl_url, settings.cop_user, settings.cop_password)
     
@@ -49,52 +51,58 @@ def get_item(map_id):
 
     if cop_item_row.man_name:
         create_brand_if_not_exists(cop_item_row.man_name, cop_item_row.man_id)
+    print("create_brand_if_not_exists ", (datetime.now() - start_dt).total_seconds())
     
-
     change_detected = False
 
     filters = {"name": "MAPID-" + str(map_id)}
     items = frappe.get_all("Item", filters=filters)
-    
+    print("frappe.get_all Item ", (datetime.now() - start_dt).total_seconds())
     if items:
-        print("### Artikelattribute aktualisieren")
         item_doc = frappe.get_doc("Item", items[0]["name"])
         item_code = item_doc.item_code
         response_item_doc, response_change  = _update_item(cop_item_row, item_doc)
+        print("update Item ", (datetime.now() - start_dt).total_seconds())
         if response_change:
-            print("Änderung gefunden")
             change_detected = True
             item_doc = response_item_doc
-        else:
-            print("Keine Änderung gefunden")
-       
     else:
         #Artikel neuanlage
         change_detected = True
         item_doc = _create_item(cop_item_row)
+        print("create Item ", (datetime.now() - start_dt).total_seconds())
         item_code = item_doc.item_code
 
-    print("### Artikellieferanten aktualisieren")
     response_item_doc, response_change = set_suppliers_and_prices(item_doc=item_doc, settings=settings, api=api)
+    print("set_suppliers_and_prices ", (datetime.now() - start_dt).total_seconds())
     if response_change:
-        print("Änderung gefunden")
         change_detected = True
         item_doc = response_item_doc
-    else:
-        print("Keine Änderung gefunden")
+
+    response_item_doc, response_change = update_selling_price(item_code, item_doc=item_doc, settings=settings, api=api, start_dt=start_dt)
+    print("update_selling_price ", (datetime.now() - start_dt).total_seconds())
+    if response_change:
+        change_detected = True
+        item_doc = response_item_doc
 
     if change_detected:
         item_doc.save()
-        frappe.db.commit()
-        
-    #get_item_images(item_code, cop_item_row, settings=settings, api=api)
-    enqueue("copconnect.remoteapi.get_item_images", item_code=item_code) #geht leider nicht
-    #get_item_images(item_code)
-    get_item_datasheet(item_code, cop_item_row, settings=settings, api=api)
+        frappe.db.commit()     
     
-def sleep(seconds):
-    time.sleep(seconds)
-    return True
+    if settings.get_datasheet == 1:
+        if settings.use_enqueue == 1:
+            enqueue("copconnect.remoteapi.get_item_datasheet", item_code=item_code) #geht leider nicht 
+        else:
+            get_item_datasheet(item_code)
+        print("copconnect.remoteapi.get_item_datasheet ", (datetime.now() - start_dt).total_seconds())
+
+    if settings.get_productimage == 1:
+        if settings.use_enqueue == 1:
+            enqueue("copconnect.remoteapi.get_item_images", item_code=item_code)
+        else:
+            get_item_images(item_code)
+        print("copconnect.remoteapi.get_item_images ", (datetime.now() - start_dt).total_seconds())
+
 
 def set_suppliers_and_prices(item_doc, settings=None, api=None):
     change_detected = False
@@ -113,7 +121,6 @@ def set_suppliers_and_prices(item_doc, settings=None, api=None):
     sup_id_list = []
     for el in supps:
         sup_id_list.append(el["sup_id"])
-    #print(supps)
     r = api.getArticlesSupplier(map_id, sup_id_list)
     if r:
         if r.item:
@@ -138,10 +145,205 @@ def set_suppliers_and_prices(item_doc, settings=None, api=None):
                             )
                             item_doc.append("supplier_items", item_supplier_doc )
                             change_detected = True
+                        if hasattr(el, "price_amount"):
+                            change_result = _update_buying_price(s["supplier"], item_doc.item_code, el.price_amount, settings=settings, item_doc=item_doc)
+                            if change_result:
+                                change_detected = True
                         continue
     return item_doc, change_detected
+
+def _update_buying_price(supplier,item_code,price_list_rate, settings=None, item_doc=None):
     #preise anlegen und ggf. aktualisieren:
-    #frappe.get_all("Item Price", filters=)
+    settings = frappe.get_single("COPConnect Settings") if not settings else settings
+    item_doc = frappe.get_doc("Item", item_code) if not item_doc else item_doc
+    print("getting item prices for ", supplier)
+    curret_buying_prices = frappe.get_all(
+        "Item Price", 
+        filters={
+            "buying": 1,
+            "item_code": item_doc.item_code,
+            "price_list": settings.price_list_buying,
+            "supplier": supplier
+        },
+        fields=[
+            "name",
+            "supplier",
+            "price_list_rate",
+            "uom"
+        ])
+    if len(curret_buying_prices) > 1:
+        frappe.throw(_("Found more then one buying price for item and supplier."))
+    if len(curret_buying_prices) == 1:
+        price = curret_buying_prices[0]
+        if price_list_rate == -1:
+            frappe.delete_doc("Item Price", curret_buying_prices[0]["name"] )
+            return True
+        if price["price_list_rate"] == price_list_rate:
+            return False
+        else:
+            item_price_doc = frappe.get_doc("Item Price", price["name"])
+            item_price_doc.price_list_rate = price_list_rate
+            item_price_doc.save()
+            return True
+    if len(curret_buying_prices) == 0:
+        if price_list_rate == -1:
+            return False
+        item_price_doc = frappe.get_doc(
+            {
+                "doctype": "Item Price",
+                "buying": 1,
+                "item_code": item_doc.item_code,
+                "price_list": settings.price_list_buying,
+                "supplier": supplier,
+                "uom": item_doc.stock_uom,
+                "price_list_rate": price_list_rate
+            }
+        )  
+        item_price_doc.insert()   
+        return True
+
+@frappe.whitelist()
+def update_selling_price(item_code, settings=None, item_doc=None, api=None, start_dt=None):
+    settings = frappe.get_single("COPConnect Settings") if not settings else settings
+    item_doc = frappe.get_doc("Item", item_code) if not item_doc else item_doc
+    start_dt = datetime.now() if not start_dt else start_dt
+    curret_selling_prices = frappe.get_all(
+        "Item Price", 
+        filters={
+            "selling": 1,
+            "item_code": item_code,
+            "price_list": settings.price_list_selling,
+        },
+        fields=[
+            "name",
+            "price_list_rate",
+            "uom"
+        ])
+    print("frappe get_all item price, selling ", (datetime.now() - start_dt).total_seconds())
+    selling_price_dict = get_selling_price(item_code, settings=settings, item_doc=item_doc, api=api, start_dt=start_dt)
+    print("get get_selling_price dict ", (datetime.now() - start_dt).total_seconds())
+    new_price = selling_price_dict["price"]
+    if len(curret_selling_prices) > 1:
+        frappe.throw(_("Found more then one buying price for item and supplier."))
+    if len(curret_selling_prices) == 1:
+        price = curret_selling_prices[0]
+        if price["price_list_rate"] == new_price:
+            return item_doc, False
+        else:
+            print("changed price detected")
+            item_price_doc = frappe.get_doc("Item Price", price["name"])
+            item_price_doc.price_list_rate = new_price
+            item_price_doc.save()
+            return item_doc, True
+    if len(curret_selling_prices) == 0:
+        item_price_doc = frappe.get_doc(
+            {
+                "doctype": "Item Price",
+                "selling": 1,
+                "item_code": item_doc.item_code,
+                "price_list": settings.price_list_selling,
+                "uom": item_doc.stock_uom,
+                "price_list_rate": new_price
+            }
+        )
+        item_price_doc.insert()
+        return item_doc, True
+
+@frappe.whitelist()
+def get_best_buying_price(item_code, settings=None, item_doc=None, qty=1, ignore_qty=False, with_realtime=False, api=None, start_dt=None):
+    settings = frappe.get_single("COPConnect Settings") if not settings else settings
+    item_doc = frappe.get_doc("Item", item_code) if not item_doc else item_doc
+    start_dt = datetime.now() if not start_dt else start_dt
+    api = CopAPI(settings.cop_wsdl_url, settings.cop_user, settings.cop_password) if not api else api
+    i = item_doc.item_code
+    if not i.startswith("MAPID-"):
+        frappe.throw("Artielnummer muss mit MAPID- anfangen.")
+    map_id = i[6:]
+    best_buying_price_dict = {
+        "price": None,
+        "supplier_id": None,
+        "supplier": None,
+        "supplier_name": None,
+        "qty": None,
+        "found": None
+        }
+    supps = frappe.get_all("COP Lieferant", filters=[["level", "<=", settings.min_level_for_selling_price]], fields=["sup_id","supplier"])
+    print("frappe.get_all(COP Lieferant) ", (datetime.now() - start_dt).total_seconds())
+    sup_id_list = []
+
+    for supp in supps:
+        print("for el in supps", (datetime.now() - start_dt).total_seconds())
+        sup_id_list.append(supp["sup_id"])
+    r = api.getArticlesSupplier(map_id, sup_id_list)
+    if r:
+        if r.item:
+            for el in r.item:
+                if hasattr(el, "price_amount"):
+                    if el.price_amount < 0:
+                        pass
+                    else:
+                        if not best_buying_price_dict["price"] or el.price_amount < best_buying_price_dict["price"]:
+                            if ignore_qty or el.qty_real >= qty:
+                                best_buying_price_dict["price"] = el.price_amount
+                                best_buying_price_dict["supplier_id"] = el.sup_id
+                                best_buying_price_dict["qty"] = el.qty_real
+                                best_buying_price_dict["found"] = True
+    
+    if best_buying_price_dict["found"]:
+        best_buying_price_dict["supplier"] = frappe.get_all("COP Lieferant", filters={"sup_id": best_buying_price_dict["supplier_id"]}, fields=["supplier"])[0]["supplier"]
+    
+    return best_buying_price_dict
+
+ 
+@frappe.whitelist()
+def get_selling_price(item_code, settings=None, item_doc=None, qty=1, with_realtime=False, api=None, start_dt=None):
+    settings = frappe.get_single("COPConnect Settings") if not settings else settings
+    item_doc = frappe.get_doc("Item", item_code) if not item_doc else item_doc
+    start_dt = datetime.now() if not start_dt else start_dt
+    api = CopAPI(settings.cop_wsdl_url, settings.cop_user, settings.cop_password) if not api else api
+    i = item_doc.item_code
+    if not i.startswith("MAPID-"):
+        frappe.throw("Artielnummer muss mit MAPID- anfangen.")
+    map_id = i[6:]
+    selling_price_dict = {
+        "price": 0,
+        "qty": None,
+        "found": None
+        }
+    best_buying_price_dict = get_best_buying_price(item_code, settings=settings, item_doc=item_doc, qty=qty, with_realtime=with_realtime, api=api, start_dt=start_dt)
+    print("get_best_buying_price ", (datetime.now() - start_dt).total_seconds())
+    if not best_buying_price_dict["found"]:
+        return selling_price_dict
+    pricing_rule = get_best_pricing_rule(item_code, best_buying_price_dict["price"], settings=settings, item_doc=item_doc)
+    if not pricing_rule:
+        return selling_price_dict
+
+    selling_price = round(apply_pricing_rule(pricing_rule, round(best_buying_price_dict["price"],2)),2)
+    selling_price_dict["found"] = True
+    selling_price_dict["price"] = selling_price
+    selling_price_dict["qty"] = qty
+    print(best_buying_price_dict)
+    print(pricing_rule)
+    print(selling_price_dict)
+    return selling_price_dict
+
+def get_best_pricing_rule(item_code, buying_price, settings=None, item_doc=None):
+    settings = frappe.get_single("COPConnect Settings") if not settings else settings
+    item_doc = frappe.get_doc("Item", item_code) if not item_doc else item_doc
+    pricing_rule_list = frappe.get_all("COPConnect Pricing Rule", order_by="name asc", fields={"name", "from_price", "to_price", "calculation_factor", "extra_charge", "item_group"})
+    for rule in pricing_rule_list:
+        if buying_price >= rule["from_price"] and buying_price <= rule["to_price"]:
+            if not rule["item_group"] or rule["item_group"] == item_doc.item_group:
+                return rule
+    return None
+
+def apply_pricing_rule(rule, buying_price):
+    if rule["calculation_factor"] and rule["calculation_factor"] >= 1:
+        buying_price = buying_price * rule["calculation_factor"]
+    if rule["extra_charge"] and rule["extra_charge"] > 0:
+         buying_price = buying_price + rule["extra_charge"]
+    return buying_price
+
         
 
 def _create_item(cop_item_row):
@@ -207,11 +409,13 @@ def get_item_images(item_code, cop_item_row=None, settings=None, api=None):
         api = CopAPI(
             settings.cop_wsdl_url, settings.cop_user, settings.cop_password
             )
+
     if not cop_item_row:
         r = api.getArticles("mapid:" + str(map_id))
         if r["rows"]["item"][0]:
             cop_item_row = r["rows"]["item"][0]
-    print(cop_item_row)
+
+
     if hasattr(cop_item_row, "url_pic"):
         if cop_item_row.url_pic:
 
