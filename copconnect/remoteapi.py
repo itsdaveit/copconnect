@@ -23,7 +23,7 @@ def importitem(map_id):
 
     settings = frappe.get_doc("COPConnect Settings")
     if settings.use_base_url == 1:
-        url = settings.use_base_url
+        url = settings.base_url
     else:
         base_path= get_site_base_path()
         site = str(base_path).split("/")[1]
@@ -33,7 +33,7 @@ def importitem(map_id):
 
     text = "Artikel mit Map ID " + map_id + " importiert."
     result = get_item(map_id, start_dt)
-    return_massage = "Artikel <a href=\"" + url + "/app/item/MAPID-" + map_id + "\" target=\"_blank\">MAPID-" + map_id + "</a> angelegt."
+    return_massage = "Artikel <a href=\"" + str(url) + "/app/item/MAPID-" + str(map_id) + "\" target=\"_blank\">MAPID-" + str(map_id) + "</a> angelegt."
     end_dt = datetime.now()
     time = end_dt - start_dt
     return return_massage + " (" + str(round(time.total_seconds(),3)) + " s)"
