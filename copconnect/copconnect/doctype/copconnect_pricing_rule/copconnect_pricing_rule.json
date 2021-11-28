@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
  "autoname": "field:order",
  "creation": "2021-03-01 21:58:12.311175",
@@ -60,7 +61,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-11-28 20:51:01.746672",
+ "modified": "2021-11-28 23:14:41.065114",
  "modified_by": "Administrator",
  "module": "COPConnect",
  "name": "COPConnect Pricing Rule",
