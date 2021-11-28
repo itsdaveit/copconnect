@@ -20,14 +20,20 @@ from frappe.utils import get_site_name, get_site_base_path, get_site_url
 
 @frappe.whitelist()
 def importitem(map_id):
-    base_path= get_site_base_path()
-    site = str(base_path).split("/")[1]
-    site_name = get_site_name(site)
-    start_dt = datetime.now()
+
     settings = frappe.get_doc("COPConnect Settings")
+    if settings.use_base_url == 1:
+        url = settings.use_base_url
+    else:
+        base_path= get_site_base_path()
+        site = str(base_path).split("/")[1]
+        url = get_site_url(site)
+
+    start_dt = datetime.now()
+
     text = "Artikel mit Map ID " + map_id + " importiert."
     result = get_item(map_id, start_dt)
-    return_massage = "Artikel <a href=\"" + get_site_url(site) + "/app/item/MAPID-" + map_id + "\" target=\"_blank\">MAPID-" + map_id + "</a> angelegt."
+    return_massage = "Artikel <a href=\"" + url + "/app/item/MAPID-" + map_id + "\" target=\"_blank\">MAPID-" + map_id + "</a> angelegt."
     end_dt = datetime.now()
     time = end_dt - start_dt
     return return_massage + " (" + str(round(time.total_seconds(),3)) + " s)"

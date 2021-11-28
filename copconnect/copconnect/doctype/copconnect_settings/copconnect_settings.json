@@ -10,7 +10,6 @@
   "cop_user",
   "cop_password",
   "cop_wsdl_url",
-  "base_url",
   "cop_ftp_settings",
   "ftp_host",
   "ftp_user",
@@ -24,7 +23,9 @@
   "misc_settings_section",
   "use_enqueue",
   "get_datasheet",
-  "get_productimage"
+  "get_productimage",
+  "use_base_url",
+  "base_url"
  ],
  "fields": [
   {
@@ -134,12 +135,18 @@
    "fieldname": "get_productimage",
    "fieldtype": "Check",
    "label": "Produktbilder herunterladen"
+  },
+  {
+   "default": "0",
+   "fieldname": "use_base_url",
+   "fieldtype": "Check",
+   "label": "Base URL verwenden"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2021-11-28 22:18:12.774721",
+ "modified": "2021-11-28 23:23:47.731585",
  "modified_by": "Administrator",
  "module": "COPConnect",
  "name": "COPConnect Settings",
