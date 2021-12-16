@@ -47,12 +47,15 @@ def importnote(note_id, customer_id=None):
     else:
         return "vMerkliste mit Note ID " + str(note_id) + " importiert." 
 
+
+
 """
 Erstellen oder aktualisieren von Artikel wird über get_item durchgeführt.
 """
 
 def get_item(map_id, start_dt):
     settings = frappe.get_doc("COPConnect Settings")
+    frappe.db.set_default("item_naming_by","Item Code")
     api = CopAPI(settings.cop_wsdl_url, settings.cop_user, settings.cop_password)
     
     r = api.getArticles("mapid:" + str(map_id))
@@ -64,6 +67,7 @@ def get_item(map_id, start_dt):
     print("create_brand_if_not_exists ", (datetime.now() - start_dt).total_seconds())
     
     change_detected = False
+    print(cop_item_row)
 
     filters = {"name": "MAPID-" + str(map_id)}
     items = frappe.get_all("Item", filters=filters)
@@ -97,7 +101,9 @@ def get_item(map_id, start_dt):
 
     if change_detected:
         item_doc.save()
-        frappe.db.commit()     
+        frappe.db.commit()
+
+    frappe.db.set_default("item_naming_by","Naming Series")
     
     if settings.get_datasheet == 1:
         if settings.use_enqueue == 1:
@@ -112,11 +118,14 @@ def get_item(map_id, start_dt):
         else:
             get_item_images(item_code)
         print("copconnect.remoteapi.get_item_images ", (datetime.now() - start_dt).total_seconds())
+    
 
 
 def set_suppliers_and_prices(item_doc, settings=None, api=None):
     change_detected = False
     i = item_doc.item_code
+    print(i)
+    print("###########")
     if not i.startswith("MAPID-"):
         frappe.throw("Artielnummer muss mit MAPID- anfangen.")
     map_id = i[6:]
@@ -161,6 +170,7 @@ def set_suppliers_and_prices(item_doc, settings=None, api=None):
                                 change_detected = True
                         continue
     return item_doc, change_detected
+
 
 def _update_buying_price(supplier,item_code,price_list_rate, settings=None, item_doc=None):
     #preise anlegen und ggf. aktualisieren:
@@ -211,6 +221,7 @@ def _update_buying_price(supplier,item_code,price_list_rate, settings=None, item
         )  
         item_price_doc.insert()   
         return True
+
 
 @frappe.whitelist()
 def update_selling_price(item_code, settings=None, item_doc=None, api=None, start_dt=None):
@@ -337,6 +348,7 @@ def get_selling_price(item_code, settings=None, item_doc=None, qty=1, with_realt
     print(selling_price_dict)
     return selling_price_dict
 
+
 def get_best_pricing_rule(item_code, buying_price, settings=None, item_doc=None):
     settings = frappe.get_single("COPConnect Settings") if not settings else settings
     item_doc = frappe.get_doc("Item", item_code) if not item_doc else item_doc
@@ -347,13 +359,13 @@ def get_best_pricing_rule(item_code, buying_price, settings=None, item_doc=None)
                 return rule
     return None
 
+
 def apply_pricing_rule(rule, buying_price):
     if rule["calculation_factor"] and rule["calculation_factor"] >= 1:
         buying_price = buying_price * rule["calculation_factor"]
     if rule["extra_charge"] and rule["extra_charge"] > 0:
          buying_price = buying_price + rule["extra_charge"]
     return buying_price
-
         
 
 def _create_item(cop_item_row):
@@ -361,6 +373,7 @@ def _create_item(cop_item_row):
     item_doc = frappe.get_doc(item_dict)
     result = item_doc.insert()
     return item_doc
+
 
 def _update_item(cop_item_row, item_doc):
     item_dict = _get_item_dict(cop_item_row)
@@ -553,12 +566,26 @@ def create_item_group_if_not_exists(cop_item_row, api=None, settings=None):
 
         Es kann im COP den gleichen group_name mehrfach geben.
         Deswegen verketten wir immer die group_id an den group_name zzgl #
+
+        Weiterhin gibt es Artikel, die keiner Item Group zugewiesen sind:
+
+        'group_id': -1,
+        'group_name': 'Keine Zuordnung',
+        'group_level1': None,
+        'group_level2': None,
+        'group_level3': None,
     '''
+    settings = frappe.get_single("COPConnect Settings") if not settings else None
+
+    #default Gruppe, falls keine Zuordnung
+    if cop_item_row.group_id == -1:
+        return settings.destination_item_group
+
     item_group_name = cop_item_row.group_name + " #" + str(cop_item_row.group_id)
 
     if not frappe.get_all("Item Group", filters={"item_group_name": item_group_name}):
 
-        settings = frappe.get_single("COPConnect Settings") if not settings else None
+        
         api = CopAPI(settings.cop_wsdl_url, settings.cop_user, settings.cop_password) if not api else None
         group_list = api.getGroups().item
 
