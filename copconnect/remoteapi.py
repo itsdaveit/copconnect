@@ -415,7 +415,8 @@ def _get_item_dict(cop_item_row, settings=None):
         "description": str(cop_item_row["desc_long"]),
         "brand": str(cop_item_row.man_name),
         "hersteller_artikel_nummer": str(cop_item_row.man_aid),
-        "barcode": str(cop_item_row.ean)
+        "barcode": str(cop_item_row.ean),
+        "is_stock_item": 1
         }
     return item_fields_matching_table
 
