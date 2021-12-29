@@ -10,7 +10,7 @@ from psycopg2.extensions import NoneAdapter
 import requests
 from frappe.core.doctype.file.file import create_new_folder
 from frappe.utils.file_manager import save_file, get_content_hash
-from frappe import enqueue
+from frappe import enqueue, get_value
 from six import BytesIO
 from pprint import pprint
 import time
@@ -20,6 +20,9 @@ from frappe.utils import get_site_name, get_site_base_path, get_site_url
 
 @frappe.whitelist()
 def importitem(map_id):
+
+    if str(map_id).startswith("MAPID-"):
+        map_id = str(map_id).split("-")[1]    
 
     settings = frappe.get_doc("COPConnect Settings")
     if settings.use_base_url == 1:
@@ -33,9 +36,13 @@ def importitem(map_id):
 
     text = "Artikel mit Map ID " + map_id + " importiert."
     result = get_item(map_id, start_dt)
-    return_massage = "Artikel <a href=\"" + str(url) + "/app/item/MAPID-" + str(map_id) + "\" target=\"_blank\">MAPID-" + str(map_id) + "</a> angelegt."
+    if result:
+        return_massage = result["message"]  
+    else:
+        return_massage = "Artikel <a href=\"" + str(url) + "/app/item/MAPID-" + str(map_id) + "\" target=\"_blank\">MAPID-" + str(map_id) + "</a> angelegt."
     end_dt = datetime.now()
     time = end_dt - start_dt
+
     return return_massage + " (" + str(round(time.total_seconds(),3)) + " s)"
 
 @frappe.whitelist()
@@ -100,10 +107,18 @@ def get_item(map_id, start_dt):
         item_doc = response_item_doc
 
     if change_detected:
-        item_doc.save()
-        frappe.db.commit()
-
-    frappe.db.set_default("item_naming_by","Naming Series")
+        try:
+            item_doc.save()
+            frappe.db.commit()
+            frappe.db.set_default("item_naming_by","Naming Series")
+        except Exception as e:
+            frappe.db.set_default("item_naming_by","Naming Series")
+            rdict = {
+                "state": "500",
+                "message": str(e)
+            }
+            return rdict
+        
     
     if settings.get_datasheet == 1:
         if settings.use_enqueue == 1:
@@ -371,7 +386,45 @@ def apply_pricing_rule(rule, buying_price):
 def _create_item(cop_item_row):
     item_dict = _get_item_dict(cop_item_row)
     item_doc = frappe.get_doc(item_dict)
+
+    for key in item_dict:
+        if key in ["barcode", "barcode_mapid"]:
+            item_doc = _set_barcode(item_doc, key, item_dict[key])
+
     result = item_doc.insert()
+    return item_doc
+
+def _set_barcode(item_doc, type, value):
+
+    barcode_exists = False
+    if hasattr(item_doc, "barcodes"):
+        for el in item_doc.barcodes:
+            if el.barcode == value:
+                barcode_exists = True
+        
+    if not barcode_exists:
+        if type == "barcode":
+            barcode_doc = frappe.get_doc(
+                {
+                    "doctype": "Item Barcode",
+                    "barcode_type": "EAN",
+                    "barcode": value
+                }
+            )
+            item_doc.append("barcodes", barcode_doc)
+            item_doc.change_detected = True
+        
+        if type == "barcode_mapid":
+            barcode_doc = frappe.get_doc(
+                {
+                    "doctype": "Item Barcode",
+                    "barcode_type": "",
+                    "barcode": value
+                }
+            )
+            item_doc.append("barcodes", barcode_doc)
+            item_doc.change_detected = True
+
     return item_doc
 
 
@@ -380,22 +433,13 @@ def _update_item(cop_item_row, item_doc):
     change_detected = False
     for key in item_dict:
         #Sonderbehandlung von Child-Table Barcodes
-        if key == "barcode":
-            barcode_exists = False
-            for el in item_doc.barcodes:
-                if el.barcode_type == "EAN" and el.barcode == item_dict[key]:
-                    barcode_exists = True
-            if not barcode_exists:
-                barcode_doc = frappe.get_doc(
-                    {
-                        "doctype": "Item Barcode",
-                        "barcode_type": "EAN",
-                        "barcode": item_dict[key]
-                    }
-                )
-                item_doc.append("barcodes", barcode_doc)
-                change_detected = True
+        if key in ["barcode", "barcode_mapid"]:
+            item_doc = _set_barcode(item_doc, key, item_dict[key])
+            if hasattr(item_doc, "change_detected"):
+                if item_doc.change_detected == True:
+                    change_detected = True
             continue
+
         #Behandlung von normalen Attributen
         if getattr(item_doc, key) != item_dict[key]:
             change_detected = True
@@ -416,6 +460,7 @@ def _get_item_dict(cop_item_row, settings=None):
         "brand": str(cop_item_row.man_name),
         "hersteller_artikel_nummer": str(cop_item_row.man_aid),
         "barcode": str(cop_item_row.ean),
+        "barcode_mapid": "MAPID-" + str(cop_item_row["map_id"]),
         "is_stock_item": 1
         }
     return item_fields_matching_table

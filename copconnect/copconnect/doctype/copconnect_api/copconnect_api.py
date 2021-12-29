@@ -14,9 +14,15 @@ import requests
 from frappe.core.doctype.file.file import create_new_folder
 from frappe.utils.file_manager import save_file
 from six import BytesIO
+from copconnect.tools import update_all_items
 
 
 class COPConnectAPI(Document):
+
+    @frappe.whitelist()
+    def update_all_items(self):
+        frappe.enqueue(update_all_items())
+        #self.save()
 
     settings = frappe.get_single("COPConnect Settings")
 

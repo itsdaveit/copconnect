@@ -39,7 +39,8 @@ class CopAPI():
         self.request_data["check_realtime"] = False
         self.request_data["check_projects"] = False
         self.request_data["additional_quality"] = True
-        self.request_data["sup_id"] = {"item": supp_ids}        
+        self.request_data["sup_id"] = {"item": supp_ids}      
+        print(self.request_data)  
         response = (self.api.service.getArticlesSupplier(self.request_data))
         return response
 

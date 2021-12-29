@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "creation": "2018-01-12 19:34:10.952833",
  "doctype": "DocType",
  "editable_grid": 1,
@@ -15,7 +16,10 @@
   "column_break_9",
   "get_item_images",
   "column_break_11",
-  "get_item_datasheet"
+  "get_item_datasheet",
+  "scripts_section",
+  "update_all_items",
+  "update_all_items_log"
  ],
  "fields": [
   {
@@ -79,10 +83,27 @@
   {
    "fieldname": "column_break_11",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "scripts_section",
+   "fieldtype": "Section Break",
+   "label": "Scripts"
+  },
+  {
+   "fieldname": "update_all_items",
+   "fieldtype": "Button",
+   "label": "Update all items",
+   "options": "update_all_items"
+  },
+  {
+   "fieldname": "update_all_items_log",
+   "fieldtype": "Long Text",
+   "label": "Update all items Log"
   }
  ],
  "issingle": 1,
- "modified": "2021-02-26 22:33:48.335719",
+ "links": [],
+ "modified": "2021-12-29 16:43:19.247311",
  "modified_by": "Administrator",
  "module": "COPConnect",
  "name": "COPConnect API",
