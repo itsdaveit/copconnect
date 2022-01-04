@@ -6,7 +6,6 @@ from attr import fields
 import frappe
 from copconnect.api import CopAPI
 from frappe.sessions import get
-from psycopg2.extensions import NoneAdapter
 import requests
 from frappe.core.doctype.file.file import create_new_folder
 from frappe.utils.file_manager import save_file, get_content_hash
@@ -390,9 +389,30 @@ def _create_item(cop_item_row):
     for key in item_dict:
         if key in ["barcode", "barcode_mapid"]:
             item_doc = _set_barcode(item_doc, key, item_dict[key])
-
+    itemdoc = _set_item_defaults(item_doc)
     result = item_doc.insert()
     return item_doc
+
+def _update_item(cop_item_row, item_doc):
+    item_dict = _get_item_dict(cop_item_row)
+    change_detected = False
+    for key in item_dict:
+        #Sonderbehandlung von Child-Table Barcodes
+        if key in ["barcode", "barcode_mapid"]:
+            item_doc = _set_barcode(item_doc, key, item_dict[key])
+            if hasattr(item_doc, "change_detected"):
+                if item_doc.change_detected == True:
+                    change_detected = True
+            continue
+        if key == "change_detected":
+            continue
+
+        #Behandlung von normalen Attributen
+        if getattr(item_doc, key) != item_dict[key]:
+            change_detected = True
+            setattr(item_doc, key, item_dict[key])
+    itemdoc = _set_item_defaults(item_doc)
+    return item_doc, change_detected
 
 def _set_barcode(item_doc, type, value):
 
@@ -427,24 +447,50 @@ def _set_barcode(item_doc, type, value):
 
     return item_doc
 
+def _set_item_defaults(item_doc):
+    item_doc = _set_default_warehouse(item_doc)
+    
+    return item_doc
 
-def _update_item(cop_item_row, item_doc):
-    item_dict = _get_item_dict(cop_item_row)
-    change_detected = False
-    for key in item_dict:
-        #Sonderbehandlung von Child-Table Barcodes
-        if key in ["barcode", "barcode_mapid"]:
-            item_doc = _set_barcode(item_doc, key, item_dict[key])
-            if hasattr(item_doc, "change_detected"):
-                if item_doc.change_detected == True:
-                    change_detected = True
-            continue
+def _get_default_warehouse(item_group, company):
+    item_group_doc = frappe.get_doc("Item Group", item_group)
+    if hasattr(item_group_doc, "item_group_defaults"):
+        for el in item_group_doc.item_group_defaults:
+            if el.company == company:
+                if el.default_warehouse:
+                    return el.default_warehouse
+                else:
+                    return False
 
-        #Behandlung von normalen Attributen
-        if getattr(item_doc, key) != item_dict[key]:
-            change_detected = True
-            setattr(item_doc, key, item_dict[key])
-    return item_doc, change_detected
+
+def _set_default_warehouse(item_doc):
+    company = frappe.get_value(doctype="Global Defaults", fieldname="default_company")
+    dest_warehouse = _get_default_warehouse(item_doc.item_group, company)
+    found_item_default_for_company = False
+    if not dest_warehouse:
+        print("no dest_warehouse found.")
+        return item_doc
+    if hasattr(item_doc, "item_defaults"):
+        for el in item_doc.item_defaults:
+            if el.company == company:
+                found_item_default_for_company = True
+                if el.default_warehouse != dest_warehouse:
+                    el.default_warehouse = dest_warehouse
+                    item_doc.change_detected = True
+    
+    if not found_item_default_for_company:
+        item_defaults_doc = frappe.get_doc({
+            "doctype": "Item Default",
+            "company": company,
+            "default_warehouse": dest_warehouse})
+        item_doc.append("item_defaults", item_defaults_doc)
+        item_doc.change_detected = True
+
+    return item_doc
+
+
+
+
             
 
 def _get_item_dict(cop_item_row, settings=None):

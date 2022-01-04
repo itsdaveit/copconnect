@@ -14,15 +14,19 @@ import requests
 from frappe.core.doctype.file.file import create_new_folder
 from frappe.utils.file_manager import save_file
 from six import BytesIO
-from copconnect.tools import update_all_items
+from frappe.utils.background_jobs import enqueue
 
 
 class COPConnectAPI(Document):
 
     @frappe.whitelist()
     def update_all_items(self):
-        frappe.enqueue(update_all_items())
-        #self.save()
+        #enqueue("copconnect.tools.update_all_items", queue="long", timeout=14400, job_name="update_all_items", event="all")
+        #enqueue("copconnect.tools.update_all_items", queue="long", timeout=14400, event="all")
+        from copconnect.tools import update_all_items
+        update_all_items()
+        frappe.msgprint("copconnect.tools.update_all_items backgound job enqueued.")
+
 
     settings = frappe.get_single("COPConnect Settings")
 

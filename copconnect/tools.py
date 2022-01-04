@@ -1,7 +1,7 @@
 import frappe
 import copconnect.remoteapi
 
-
+@frappe.whitelist()
 def update_all_items():
     items_list = frappe.get_all("Item", filters={"item_code": ["like", "MAPID-%"]} )
     counter = 0
