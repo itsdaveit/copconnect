@@ -92,7 +92,8 @@ def get_item(map_id, start_dt):
         item_doc = _create_item(cop_item_row)
         print("create Item ", (datetime.now() - start_dt).total_seconds())
         item_code = item_doc.item_code
-
+    
+    item_doc.save()
     response_item_doc, response_change = set_suppliers_and_prices(item_doc=item_doc, settings=settings, api=api)
     print("set_suppliers_and_prices ", (datetime.now() - start_dt).total_seconds())
     if response_change:
@@ -162,13 +163,17 @@ def set_suppliers_and_prices(item_doc, settings=None, api=None):
                 for s in supps:
                     if s["sup_id"] == str(el.sup_id): # ERPNext Supplier gefunden
                         existing_supplier_item = False
-                        for si in item_doc.supplier_items:
-                            if si.supplier == s["supplier"]: # bestehende Lieferantenartikelnummer gefunden
-                                existing_supplier_item = True
-                                if si.supplier_part_no != str(el.sup_aid):
-                                    si.supplier_part_no = str(el.sup_aid) #wenn vorhanden und abweichend, aktualisieren
-                                    change_detected = True
-                                continue
+                        print("supplier")
+                        print(str(el.sup_id))
+                        if hasattr(item_doc, "supplier_items"):
+                            for si in item_doc.supplier_items:
+                                if si.supplier == s["supplier"]: # bestehende Lieferantenartikelnummer gefunden
+                                    existing_supplier_item = True
+                                    if si.supplier_part_no != str(el.sup_aid):
+                                        si.supplier_part_no = str(el.sup_aid) #wenn vorhanden und abweichend, aktualisieren
+                                        change_detected = True
+                                    continue
+
                         if not existing_supplier_item: #wenn nicht gefunden, neuanlage
                             item_supplier_doc = frappe.get_doc(
                                 {
@@ -390,7 +395,7 @@ def _create_item(cop_item_row):
         if key in ["barcode", "barcode_mapid"]:
             item_doc = _set_barcode(item_doc, key, item_dict[key])
     itemdoc = _set_item_defaults(item_doc)
-    result = item_doc.insert()
+    itemdoc = _validate_barcodes(item_doc)
     return item_doc
 
 def _update_item(cop_item_row, item_doc):
@@ -412,9 +417,48 @@ def _update_item(cop_item_row, item_doc):
             change_detected = True
             setattr(item_doc, key, item_dict[key])
     itemdoc = _set_item_defaults(item_doc)
+    itemdoc = _validate_barcodes(item_doc)
+    if hasattr(item_doc, "change_detected"):
+        if item_doc.change_detected == True:
+            change_detected = True
     return item_doc, change_detected
 
+
+def _validate_barcodes(item_doc):
+    from stdnum import ean
+    to_remove = []
+    if len(item_doc.barcodes) > 0:
+        for item_barcode in item_doc.barcodes:
+            options = frappe.get_meta("Item Barcode").get_options("barcode_type").split("\n")
+            if item_barcode.barcode:
+                duplicate = frappe.db.sql(
+                    """select parent from `tabItem Barcode` where barcode = %s and parent != %s""",
+                    (item_barcode.barcode, item_doc.name),
+                )
+                if duplicate:
+                    to_remove.append(item_barcode)
+
+                item_barcode.barcode_type = (
+                    "" if item_barcode.barcode_type not in options else item_barcode.barcode_type
+                )
+                if item_barcode.barcode_type and item_barcode.barcode_type.upper() in (
+                    "EAN",
+                    "UPC-A",
+                    "EAN-13",
+                    "EAN-8",
+                ):
+                    if not ean.is_valid(item_barcode.barcode):
+                        to_remove.append(item_barcode)
+    if to_remove:
+        item_doc.change_detected = True
+        for rm in to_remove:
+            item_doc.barcodes.remove(rm)
+    return item_doc
+
+
 def _set_barcode(item_doc, type, value):
+    print("######################f")
+    print(item_doc, type, value)
 
     barcode_exists = False
     if hasattr(item_doc, "barcodes"):
@@ -445,6 +489,8 @@ def _set_barcode(item_doc, type, value):
             item_doc.append("barcodes", barcode_doc)
             item_doc.change_detected = True
 
+    for el in item_doc.barcodes:
+        print(el.barcode)
     return item_doc
 
 def _set_item_defaults(item_doc):
@@ -505,10 +551,15 @@ def _get_item_dict(cop_item_row, settings=None):
         "description": str(cop_item_row["desc_long"]),
         "brand": str(cop_item_row.man_name),
         "hersteller_artikel_nummer": str(cop_item_row.man_aid),
-        "barcode": str(cop_item_row.ean),
         "barcode_mapid": "MAPID-" + str(cop_item_row["map_id"]),
         "is_stock_item": 1
         }
+    print("---------------------")
+    if cop_item_row.ean:
+        item_fields_matching_table["barcode"] = str(cop_item_row.ean)
+    else:
+        print("no barcode")
+    print("---------------------")
     return item_fields_matching_table
 
 
