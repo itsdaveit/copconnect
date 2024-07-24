@@ -11,7 +11,7 @@ import xml.etree.ElementTree as ET
 from pprint import pprint
 from copconnect.api import CopAPI
 import requests
-from frappe.core.doctype.file.file import create_new_folder
+from frappe.core.api.file import create_new_folder
 from frappe.utils.file_manager import save_file
 from six import BytesIO
 from frappe.utils.background_jobs import enqueue

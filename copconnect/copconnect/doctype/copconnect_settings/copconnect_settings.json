@@ -20,6 +20,9 @@
   "min_level_for_selling_price",
   "price_list_buying",
   "price_list_selling",
+  "section_break_kxcg",
+  "payment_terms_template_for_imported_cop_orders",
+  "purchase_taxes_and_charges_template_for_imported_cop_orders",
   "misc_settings_section",
   "use_enqueue",
   "get_datasheet",
@@ -141,12 +144,33 @@
    "fieldname": "use_base_url",
    "fieldtype": "Check",
    "label": "Base URL verwenden"
+  },
+  {
+   "fieldname": "section_break_kxcg",
+   "fieldtype": "Section Break",
+   "label": "Purchase Order Import Settings"
+  },
+  {
+   "fieldname": "payment_terms_template_for_imported_cop_orders",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Payment Terms Template for imported COP Orders",
+   "options": "Payment Terms Template",
+   "reqd": 1
+  },
+  {
+   "fieldname": "purchase_taxes_and_charges_template_for_imported_cop_orders",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Purchase Taxes and Charges Template for imported COP Orders",
+   "options": "Purchase Taxes and Charges Template",
+   "reqd": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2021-11-28 23:23:47.731585",
+ "modified": "2024-07-24 12:43:58.896101",
  "modified_by": "Administrator",
  "module": "COPConnect",
  "name": "COPConnect Settings",
@@ -166,5 +190,6 @@
  "quick_entry": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }
