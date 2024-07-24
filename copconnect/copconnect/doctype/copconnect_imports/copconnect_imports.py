@@ -116,7 +116,7 @@ class COPConnectimports(Document):
                         #print item_data
                         self.create_item(item_data, COPConnect_settings, file_type)
                     if create_po:
-                        self.set_purchase_order(item_rows)
+                        self.set_purchase_order(item_rows, COPConnect_settings)
 
 
                 else:
@@ -249,7 +249,7 @@ class COPConnectimports(Document):
         ftp.quit()
         pass
 
-    def set_purchase_order(self, item_rows):
+    def set_purchase_order(self, item_rows, COPConnect_settings):
         po_title = item_rows[0]["sup_name"] + "-"  + item_rows[0]["customer_po"]
         found_pos = frappe.get_all("Purchase Order", filters={"title": po_title})
         if len(found_pos) > 0:
@@ -261,8 +261,8 @@ class COPConnectimports(Document):
                                 "supplier": frappe.get_doc("COP Lieferant", item_rows[0]["sup_name"]).supplier,
                                 "set_warehouse": frappe.get_doc("Stock Settings").default_warehouse,
                                 "company": frappe.get_doc("Global Defaults").default_company,
-                                "taxes_and_charges": "Germany VAT 19%",
-                                "payment_terms_template": "BFS Zentralregulierung"
+                                "taxes_and_charges": COPConnect_settings.purchase_taxes_and_charges_template_for_imported_cop_orders,
+                                "payment_terms_template": COPConnect_settings.payment_terms_template_for_imported_cop_orders
                                 })
         for row in item_rows:
             po_item_doc = frappe.get_doc({"doctype": "Purchase Order Item",
