@@ -95,8 +95,6 @@ def get_item(map_id, start_dt):
     settings = frappe.get_doc("COPConnect Settings")
     frappe.db.set_default("item_naming_by","Item Code")
     api = CopAPI(settings.cop_wsdl_url, settings.cop_user, settings.cop_password)
-
-    frappe.throw("felher!")
     
     r = api.getArticles("mapid:" + str(map_id))
     if r["rows"]["item"][0]:
