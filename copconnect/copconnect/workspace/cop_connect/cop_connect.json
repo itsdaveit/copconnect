@@ -82,7 +82,7 @@
    "type": "Link"
   }
  ],
- "modified": "2024-07-24 12:56:52.644680",
+ "modified": "2024-07-24 14:30:25.440803",
  "modified_by": "D.Malinowski@itsdave.de",
  "module": "COPConnect",
  "name": "COP Connect",
@@ -92,7 +92,7 @@
  "public": 1,
  "quick_lists": [],
  "roles": [],
- "sequence_id": 39.0,
+ "sequence_id": 4.0,
  "shortcuts": [],
  "title": "COP Connect"
 }

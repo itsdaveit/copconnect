@@ -15,34 +15,66 @@ from pprint import pprint
 import time
 from frappe import _
 from frappe.utils import get_site_name, get_site_base_path, get_site_url
+import traceback
 
 
 @frappe.whitelist()
 def importitem(map_id):
+    try:
+        map_id = extract_map_id(map_id)
+        url = get_base_url()
 
+        start_dt = datetime.now()
+
+        text = f"Artikel mit Map ID {map_id} importiert."
+        result = get_item(map_id, start_dt)
+        
+        if result:
+            return_message = result["message"]
+        else:
+            return_message = f"Artikel <a href=\"{url}/app/item/MAPID-{map_id}\" target=\"_blank\">MAPID-{map_id}</a> angelegt."
+
+        end_dt = datetime.now()
+        elapsed_time = round((end_dt - start_dt).total_seconds(), 3)
+
+        return f"{return_message} ({elapsed_time} s)"
+    except Exception as e:
+        exception_type = type(e).__name__
+        trace = traceback.format_exc()
+        error_log_name = log_error_to_frappe(exception_type, str(e), trace)
+        error_log_url = frappe.utils.get_url_to_form('Error Log', error_log_name)
+        return f"An error occurred: {exception_type} - {str(e)}. See the error log <a href='{error_log_url}' target='_blank'>here</a>."
+
+def extract_map_id(map_id):
+    """Extract the numeric part of the map_id if it starts with 'MAPID-'."""
     if str(map_id).startswith("MAPID-"):
-        map_id = str(map_id).split("-")[1]    
+        return str(map_id).split("-")[1]
+    return map_id
 
-    settings = frappe.get_doc("COPConnect Settings")
-    if settings.use_base_url == 1:
-        url = settings.base_url
-    else:
-        base_path= get_site_base_path()
+def get_base_url():
+    """Get the base URL based on the settings."""
+    try:
+        settings = frappe.get_doc("COPConnect Settings")
+        if settings.use_base_url == 1:
+            return settings.base_url
+        base_path = get_site_base_path()
         site = str(base_path).split("/")[1]
-        url = get_site_url(site)
+        return get_site_url(site)
+    except Exception as e:
+        raise RuntimeError(f"Failed to retrieve base URL: {str(e)}")
 
-    start_dt = datetime.now()
+def log_error_to_frappe(exception_type, error_message, traceback):
+    """Log error details to Frappe's Error Log doctype and return the name of the error log."""
+    error_log = frappe.get_doc({
+        "doctype": "Error Log",
+        "method": "COPConnect RemoteAPI Error",
+        "error": f"{exception_type}: {error_message}\n\nTraceback:\n{traceback}"
+    })
+    error_log.insert(ignore_permissions=True)
+    frappe.db.commit()  # Ensure the error log is saved
+    return error_log.name  # Return the name of the error log
 
-    text = "Artikel mit Map ID " + map_id + " importiert."
-    result = get_item(map_id, start_dt)
-    if result:
-        return_massage = result["message"]  
-    else:
-        return_massage = "Artikel <a href=\"" + str(url) + "/app/item/MAPID-" + str(map_id) + "\" target=\"_blank\">MAPID-" + str(map_id) + "</a> angelegt."
-    end_dt = datetime.now()
-    time = end_dt - start_dt
 
-    return return_massage + " (" + str(round(time.total_seconds(),3)) + " s)"
 
 @frappe.whitelist()
 def importnote(note_id, customer_id=None):
@@ -63,6 +95,8 @@ def get_item(map_id, start_dt):
     settings = frappe.get_doc("COPConnect Settings")
     frappe.db.set_default("item_naming_by","Item Code")
     api = CopAPI(settings.cop_wsdl_url, settings.cop_user, settings.cop_password)
+
+    frappe.throw("felher!")
     
     r = api.getArticles("mapid:" + str(map_id))
     if r["rows"]["item"][0]:
