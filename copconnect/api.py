@@ -48,3 +48,41 @@ class CopAPI():
     def getGroups(self):
         response = (self.api.service.getGroups(self.request_data))
         return response
+
+
+    def getOrders(
+            self,
+            action,
+            start_date=None,
+            end_date=None,
+            order_id=None,
+            sup_id=None,
+            status=None,
+            customer_po=None,
+            enduser_po=None,
+            check_responses=False
+        ):
+        # Required parameters
+        self.request_data["action"] = action
+        self.request_data["check_responses"] = check_responses
+
+        # add optional parameters only if they are defined
+        if start_date:
+            self.request_data["start_date"] = start_date
+        if end_date:
+            self.request_data["end_date"] = end_date
+        if order_id:
+            self.request_data["order_id"] = {"item": order_id} 
+        if sup_id:
+            self.request_data["sup_id"] = {"item": sup_id}
+        if status:
+            self.request_data["status"] = {"item": status}
+        if customer_po:
+            self.request_data["customer_po"] = customer_po
+        if enduser_po:
+            self.request_data["enduser_po"] = enduser_po
+
+        print("Request Data:", self.request_data)
+
+        response = self.api.service.getOrders(self.request_data)
+        return response
