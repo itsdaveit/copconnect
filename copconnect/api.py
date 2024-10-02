@@ -64,6 +64,7 @@ class CopAPI():
         ):
         # Required parameters
         self.request_data["action"] = action
+        self.request_data["customer_po"] = customer_po
         self.request_data["check_responses"] = check_responses
 
         # add optional parameters only if they are defined
@@ -77,8 +78,6 @@ class CopAPI():
             self.request_data["sup_id"] = {"item": sup_id}
         if status:
             self.request_data["status"] = {"item": status}
-        if customer_po:
-            self.request_data["customer_po"] = customer_po
         if enduser_po:
             self.request_data["enduser_po"] = enduser_po
 
