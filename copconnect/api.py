@@ -59,12 +59,13 @@ class CopAPI():
             sup_id=None,
             status=None,
             customer_po="",
-            enduser_po=None,
+            enduser_po="",
             check_responses=False
         ):
         # Required parameters
         self.request_data["action"] = action
         self.request_data["customer_po"] = customer_po
+        self.request_data["enduser_po"] = enduser_po
         self.request_data["check_responses"] = check_responses
 
         # add optional parameters only if they are defined
