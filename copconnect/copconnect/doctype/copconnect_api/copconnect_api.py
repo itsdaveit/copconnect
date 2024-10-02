@@ -338,17 +338,22 @@ class COPConnectAPI(Document):
         
         # Get settings
         COPConnect_settings = frappe.get_doc("COPConnect Settings")
-        cop_api = CopAPI(
-            url=COPConnect_settings.webservice_url,
-            username=COPConnect_settings.webservice_username,
-            password=COPConnect_settings.webservice_password
-        )
+        COPClient = Client(COPConnect_settings.cop_wsdl_url)
+        request_data = {
+            "username": COPConnect_settings.cop_user,
+            "password": COPConnect_settings.cop_password,
+            "active": True
+        }
 
-        # Get orders via SOAP WebService using the `getOrders` function
-        try:
-            orders_response = cop_api.getOrders(action="get", status=["open", "closed"])
-        except Exception as e:
-            frappe.throw(f"Error accessing WebService: {str(e)}")
+        # Get the session ID from the WebService
+        request_data["sid"] = COPClient.service.getSessionID(request_data)
+
+        # Call the WebService to get the orders using the obtained session
+        orders_response = COPClient.service.getOrders({
+            "action": "get",
+            "check_responses": False,
+            "sid": request_data["sid"],
+        })
 
         # Verify if orders were returned
         if not orders_response or not orders_response.get("order"):
