@@ -58,7 +58,7 @@ class CopAPI():
             order_id=None,
             sup_id=None,
             status=None,
-            customer_po=None,
+            customer_po="",
             enduser_po=None,
             check_responses=False
         ):
