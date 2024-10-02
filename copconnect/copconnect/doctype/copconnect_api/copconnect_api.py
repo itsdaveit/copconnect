@@ -353,6 +353,9 @@ class COPConnectAPI(Document):
 
         # Get orders from the XML returned by the SOAP API
         orders = orders_response["order"]
+        
+        print(f"Orders found: {len(orders)}")
+        print(orders)
 
         # Process each order received
         for order in orders:
