@@ -333,128 +333,57 @@ class COPConnectAPI(Document):
 
 
     @frappe.whitelist()
-    def cop_getOrderDetails(self, order_id):
-        # Connect to the WebService and get the order details
-
+    def import_orders(self):
+        # Main function that imports data from the WebService via SOAP API and creates new orders in Frappe.
+        
+        # Get settings
         COPConnect_settings = frappe.get_doc("COPConnect Settings")
-        base_url = COPConnect_settings.webservice_url
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {COPConnect_settings.webservice_token}"
-        }
-        response = requests.get(f"{base_url}/get_order_details?order_id={order_id}", headers=headers)
-        
-        if response.status_code != 200:
-            frappe.throw(f"Error accessing WebService for Order ID {order_id}: {response.status_code}")
+        cop_api = CopAPI(
+            url=COPConnect_settings.webservice_url,
+            username=COPConnect_settings.webservice_username,
+            password=COPConnect_settings.webservice_password
+        )
 
-        # Load the response as JSON
-        order_details = response.json()
+        # Get orders via SOAP WebService using the `getOrders` function
+        try:
+            orders_response = cop_api.getOrders(action="get", status=["open", "closed"])
+        except Exception as e:
+            frappe.throw(f"Error accessing WebService: {str(e)}")
 
-        if not order_details:
-            frappe.throw(f"No details found for order {order_id}")
+        # Verify if orders were returned
+        if not orders_response or not orders_response.get("order"):
+            frappe.throw("No orders found in WebService")
 
-        # Define the expected headers, as per the original example for 'COP_order'
-        expected_headers = [
-            'map_id', 'sup_name', 'sup_id', 'sup_aid', 'man_name', 'man_aid', 'product_quality',
-            'desc_short', 'ean', 'price_requested', 'price_confirmed', 'qty_requested', 'qty_confirmed',
-            'qty_delivered', 'item_remark', 'user_name', 'reference', 'customer_po', 'order_name', 
-            'order_date', 'response_date', 'order_status', 'project_id', 'price_invoiced', 'qty_invoiced'
-        ]
+        # Get orders from the XML returned by the SOAP API
+        orders = orders_response["order"]
 
-        # Validate the format of the received data
-        if not self.check_webservice_format(order_details, expected_headers):
-            frappe.throw(f"Error in data format for order {order_id}")           
+        # Process each order received
+        for order in orders:
+            if not frappe.db.exists("Purchase Order", {"order_id": order["order_id"]}):
+                self.create_new_order(order, COPConnect_settings)
 
-        # Process the items returned from the order
-        for order in order_details.get('items', []):
-            item_data = self.assign_item_data(order, expected_headers)
-            self.create_item(item_data, COPConnect_settings, "COP_order")
-            
-        return f"Details for Order {order_id} processed successfully."
-
-    # Other helper functions, adapted from the original code to process the order:
-    
-    def process_COP_getOrderDetails_Response(self, order_details_response):
-        order_info = {}
-        order_info["order_id"] = order_details_response["order_id"]
-        order_info["customer_name"] = order_details_response["customer"]["name"]
-        order_info["order_date"] = order_details_response["order_date"]
-        order_info["items"] = order_details_response["items"]["item"]
-        return order_info
-
-    def check_webservice_format(self, order, expected_headers):
-        # Validate if the headers are in the expected order
-        headers = list(order.keys())
-        return headers == expected_headers
-
-    def assign_item_data(self, order, expected_headers):
-        # Map the data from the WebService to the expected dictionary format
-        keys = expected_headers
-        values = [order.get(key) for key in keys]
-        item_data = dict(zip(keys, values))
-        return item_data
-
-    def create_item(self, item_data, COPConnect_settings):
-        # Create or update the item in Frappe using the data from the WebService
-        item_code = f"MAPID-{item_data['map_id']}"
-        found_items = frappe.get_all("Item", filters={"item_code": item_code}, fields=["name", "item_code"])
-        COPConnect_Supplier_name = frappe.get_doc("COP Lieferant", item_data["sup_name"]).supplier
-        
-        # If exists, update the item details
-        if len(found_items) >= 1:
-            item_doc = frappe.get_doc("Item", item_code)
-            something_changed = False
-            standard_rate = self.calculate_standard_rate(item_data)
-            if standard_rate and item_doc.standard_rate != standard_rate:
-                item_doc.standard_rate = standard_rate
-                something_changed = True
-            if item_doc.default_supplier != COPConnect_Supplier_name:
-                item_doc.default_supplier = COPConnect_Supplier_name
-                something_changed = True
-            if something_changed:
-                item_doc.save()
-
-        # if not exists, create a new item
-        else:
-            item_doc = frappe.get_doc({
-                "doctype": "Item",
-                "item_code": item_code,
-                "item_group": COPConnect_settings.destination_item_group,
-                "item_name": item_data["desc_short"][:140],
-                "default_supplier": COPConnect_Supplier_name,
-                "is_stock_item": 1
-            })
-            standard_rate = self.calculate_standard_rate(item_data)
-            if standard_rate:
-                item_doc.standard_rate = standard_rate
-            item_doc.insert()
-        
-        # Create an purchase order item for the supplier
-        self.set_supplier_item_code(item_data, item_code)
-
-    def set_supplier_item_code(self, item_data, item_code):
-        # Assign the supplier item code to the item
-        COPConnect_Supplier_name = frappe.get_doc("COP Lieferant", item_data["sup_name"]).supplier
-        item_doc = frappe.get_doc("Item", item_code)
-
-        for item_sup in item_doc.supplier_items:
-            if item_sup.supplier == COPConnect_Supplier_name and item_sup.supplier_part_no == item_data["sup_aid"]:
-                return True
-
-        supplier_item_doc = frappe.get_doc({
-            "doctype": "Item Supplier",
-            "parentfield": "supplier_items",
-            "supplier": COPConnect_Supplier_name,
-            "supplier_part_no": item_data["sup_aid"]
+    def create_new_order(self, order, COPConnect_settings):
+        new_order = frappe.get_doc({
+            "doctype": "Purchase Order",
+            "order_id": order["order_id"],
+            "supplier": order.get("sup_name", ""),
+            "transaction_date": order.get("order_date", ""),
+            "schedule_date": order.get("response_date", ""),
+            "order_type": order.get("order_type", ""),
+            "order_status": order.get("order_status", ""),
+            "items": []
         })
-        item_doc.supplier_items.append(supplier_item_doc)
-        item_doc.save()
 
-    def calculate_standard_rate(self, item):
-        # Calculate the standard rate based on the item values
-        if "price_amount" in item and item["price_amount"]:
-            return float(item["price_amount"].replace(",", ".")) * 1.15 if float(item["price_amount"].replace(",", ".")) > 0 else False
-        elif "price_requested" in item and item["price_requested"]:
-            return float(item["price_requested"].replace(",", ".")) * 1.15 if float(item["price_requested"].replace(",", ".")) > 0 else False
-        else:
-            return False
+        if order.get("order_items"):
+            for item in order["order_items"]:
+                new_order.append("items", {
+                    "item_code": item.get("item_code", ""),
+                    "item_name": item.get("desc_short", ""),
+                    "qty": item.get("qty_requested", 0),
+                    "rate": item.get("price_requested", 0)
+                })
+
+        # Insert the new order
+        new_order.insert()
+        frappe.db.commit()
+        frappe.msgprint(f"New order created: {order['order_id']}")
