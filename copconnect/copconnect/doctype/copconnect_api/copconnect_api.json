@@ -6,7 +6,8 @@
  "engine": "InnoDB",
  "field_order": [
   "getsuppliers",
-  "artikel_operationen_section",
+  "column_break_liso",
+  "update_orders",
   "artikel_anlage_section",
   "cop_map_id",
   "column_break_5",
@@ -17,6 +18,8 @@
   "get_item_images",
   "column_break_11",
   "get_item_datasheet",
+  "column_break_lqrc",
+  "create_orders",
   "scripts_section",
   "update_all_items",
   "update_all_items_log"
@@ -27,11 +30,6 @@
    "fieldtype": "Button",
    "label": "Lieferanten einlesen",
    "options": "cop_getSuppliers"
-  },
-  {
-   "fieldname": "artikel_operationen_section",
-   "fieldtype": "Section Break",
-   "label": "Artikel Operationen"
   },
   {
    "fieldname": "item",
@@ -99,11 +97,30 @@
    "fieldname": "update_all_items_log",
    "fieldtype": "Long Text",
    "label": "Update all items Log"
+  },
+  {
+   "fieldname": "column_break_lqrc",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "create_orders",
+   "fieldtype": "Button",
+   "label": "Create Orders"
+  },
+  {
+   "fieldname": "update_orders",
+   "fieldtype": "Button",
+   "label": "Update orders",
+   "options": "import_orders"
+  },
+  {
+   "fieldname": "column_break_liso",
+   "fieldtype": "Column Break"
   }
  ],
  "issingle": 1,
  "links": [],
- "modified": "2021-12-29 16:43:19.247311",
+ "modified": "2024-10-02 14:12:27.999571",
  "modified_by": "Administrator",
  "module": "COPConnect",
  "name": "COPConnect API",
@@ -123,5 +140,6 @@
  "quick_entry": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }
