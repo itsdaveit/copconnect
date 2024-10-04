@@ -76,7 +76,7 @@ class CopAPI():
         if order_id:
             self.request_data["order_id"] = {"item": order_id}
         else:
-            self.request_data["order_id"] = {"item": []}
+            self.request_data["order_id"] = {"item": list(range(1, 100000))}
         if sup_id:
             self.request_data["sup_id"] = {"item": sup_id}
         if status:
