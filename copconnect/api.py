@@ -57,7 +57,7 @@ class CopAPI():
             end_date=None,
             order_id=None,
             sup_id=None,
-            status="",
+            status=None,
             customer_po="",
             enduser_po="",
             check_responses=False
@@ -83,6 +83,8 @@ class CopAPI():
             self.request_data["sup_id"] = {"item": list(range(1, 100000))}
         if status:
             self.request_data["status"] = {"item": status}
+        else:
+            self.request_data["status"] = {"item": list(range(1, 100000))}
         if enduser_po:
             self.request_data["enduser_po"] = enduser_po
 
