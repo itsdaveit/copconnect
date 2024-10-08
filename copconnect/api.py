@@ -73,11 +73,11 @@ class CopAPI():
         if start_date:
             self.request_data["start_date"] = start_date
         else:
-            self.request_data["start_date"] = "2018-01-01"
+            self.request_data["start_date"] = "2018-01-01 00:00:00"
         if end_date:
             self.request_data["end_date"] = end_date
         else:
-            self.request_data["end_date"] = datetime.now().strftime("%Y-%m-%d")
+            self.request_data["end_date"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         if order_id:
             self.request_data["order_id"] = {"item": order_id}
         else:
