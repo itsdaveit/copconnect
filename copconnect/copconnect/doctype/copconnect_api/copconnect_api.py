@@ -358,7 +358,7 @@ class COPConnectAPI(Document):
         print(f"Tipo de orders_response: {type(orders_response)}")
         print(orders_response)
         with open("/tmp/orders_response.json", "w") as f:
-            f.write(json.dumps(str(orders_response)))
+            f.write(str(orders_response))
 
         orders = orders_response['item']
         
