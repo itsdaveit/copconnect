@@ -367,29 +367,43 @@ class COPConnectAPI(Document):
 
         # Process each order received
         for order in orders:
-            if not frappe.db.exists("Purchase Order", {"order_id": order["order_id"]}):
+            if not frappe.db.exists("Purchase Order", {"order_id": order["id"]}):
+                po_title = order.get("sup_name", "") + "-"  + order.get("customer_po", "")
+                found_pos = frappe.get_all("Purchase Order", filters={"title": po_title})
+                if len(found_pos) > 0:
+                    print("Purchase Order " + po_title + " bereits vorhanden.")
+                    continue
                 self.create_new_order(order, COPConnect_settings)
 
     def create_new_order(self, order, COPConnect_settings):
+        po_title = order.get("sup_name", "") + "-"  + order.get("customer_po", "")
         new_order = frappe.get_doc({
             "doctype": "Purchase Order",
-            "order_id": order["order_id"],
-            "supplier": order.get("sup_name", ""),
+            "order_id": order["id"],
+            "title": po_title,
+            "supplier": frappe.get_doc("COP Lieferant", order.get("sup_name", "")).supplier,
             "transaction_date": order.get("order_date", ""),
             "schedule_date": order.get("response_date", ""),
             "order_type": order.get("order_type", ""),
             "order_status": order.get("order_status", ""),
+            "set_warehouse": frappe.get_doc("Stock Settings").default_warehouse,
+            "company": frappe.get_doc("Global Defaults").default_company,
+            "taxes_and_charges": COPConnect_settings.purchase_taxes_and_charges_template_for_imported_cop_orders,
+            "payment_terms_template": COPConnect_settings.payment_terms_template_for_imported_cop_orders,
             "items": []
         })
 
         if order.get("order_items"):
-            for item in order["order_items"]:
-                new_order.append("items", {
-                    "item_code": item.get("item_code", ""),
-                    "item_name": item.get("desc_short", ""),
-                    "qty": item.get("qty_requested", 0),
-                    "rate": item.get("price_requested", 0)
-                })
+            if order['order_items'].get("item"):
+                for item in order["order_items"]["item"]:
+                    po_item_doc = frappe.get_doc({
+                        "doctype": "Purchase Order Item",
+                        "item_code": "MAPID-" + item["map_id"],
+                        "qty": float(item["qty_confirmed"].replace(",",".")),
+                        "schedule_date": frappe.utils.data.today(),
+                        "rate": float(item["price_confirmed"].replace(",","."))
+                    })
+                    new_order.append("items", po_item_doc)
 
         # Insert the new order
         new_order.insert()
