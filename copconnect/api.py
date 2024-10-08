@@ -1,6 +1,7 @@
 from zeep import Client, Settings
 from zeep.plugins import HistoryPlugin
 import xml.etree.ElementTree as ET
+from datetime import datetime
 
 class CopAPI():
     def __init__(self, url, username, password):
@@ -71,8 +72,12 @@ class CopAPI():
         # add optional parameters only if they are defined
         if start_date:
             self.request_data["start_date"] = start_date
+        else:
+            self.request_data["start_date"] = "2018-01-01"
         if end_date:
             self.request_data["end_date"] = end_date
+        else:
+            self.request_data["end_date"] = datetime.now().strftime("%Y-%m-%d")
         if order_id:
             self.request_data["order_id"] = {"item": order_id}
         else:
