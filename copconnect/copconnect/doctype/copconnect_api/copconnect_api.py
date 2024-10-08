@@ -15,6 +15,7 @@ from frappe.core.api.file import create_new_folder
 from frappe.utils.file_manager import save_file
 from six import BytesIO
 from frappe.utils.background_jobs import enqueue
+import json
 
 
 class COPConnectAPI(Document):
@@ -356,6 +357,8 @@ class COPConnectAPI(Document):
         # debug
         print(f"Tipo de orders_response: {type(orders_response)}")
         print(orders_response)
+        with open("/tmp/orders_response.json", "w") as f:
+            f.write(json.dumps(orders_response, indent=4))
 
         orders = orders_response['item']
         
