@@ -384,8 +384,6 @@ class COPConnectAPI(Document):
             "supplier": frappe.get_doc("COP Lieferant", order["sup_name"]).supplier,
             "transaction_date": order["order_date"],
             "schedule_date": order["response_date"],
-            "order_type": order["order_type"],
-            "order_status": order["order_status"],
             "set_warehouse": frappe.get_doc("Stock Settings").default_warehouse,
             "company": frappe.get_doc("Global Defaults").default_company,
             "taxes_and_charges": COPConnect_settings.purchase_taxes_and_charges_template_for_imported_cop_orders,
