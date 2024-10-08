@@ -81,19 +81,17 @@ class CopAPI():
         if order_id:
             self.request_data["order_id"] = {"item": order_id}
         else:
-            self.request_data["order_id"] = {"item": list(range(1, 100000))}
+            self.request_data["order_id"] = {"item": list(range(1, 1000))}
         if sup_id:
             self.request_data["sup_id"] = {"item": sup_id}
         else:
-            self.request_data["sup_id"] = {"item": list(range(1, 100000))}
+            self.request_data["sup_id"] = {"item": list(range(1, 1000))}
         if status:
             self.request_data["status"] = {"item": status}
         else:
-            self.request_data["status"] = {"item": list(range(1, 100000))}
+            self.request_data["status"] = {"item": list(range(1, 1000))}
         if enduser_po:
             self.request_data["enduser_po"] = enduser_po
-
-        print("Request Data:", self.request_data)
 
         response = self.api.service.getOrders(self.request_data)
         return response
