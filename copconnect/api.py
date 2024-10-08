@@ -1,6 +1,7 @@
 from zeep import Client, Settings
 from zeep.plugins import HistoryPlugin
 import xml.etree.ElementTree as ET
+from datetime import datetime
 
 class CopAPI():
     def __init__(self, url, username, password):
@@ -47,4 +48,50 @@ class CopAPI():
         
     def getGroups(self):
         response = (self.api.service.getGroups(self.request_data))
+        return response
+
+
+    def getOrders(
+            self,
+            action,
+            start_date=None,
+            end_date=None,
+            order_id=None,
+            sup_id=None,
+            status=None,
+            customer_po="",
+            enduser_po="",
+            check_responses=False
+        ):
+        # Required parameters
+        self.request_data["action"] = action
+        self.request_data["customer_po"] = customer_po
+        self.request_data["enduser_po"] = enduser_po
+        self.request_data["check_responses"] = check_responses
+
+        # add optional parameters only if they are defined
+        if start_date:
+            self.request_data["start_date"] = start_date
+        else:
+            self.request_data["start_date"] = "2018-01-01 00:00:00"
+        if end_date:
+            self.request_data["end_date"] = end_date
+        else:
+            self.request_data["end_date"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        if order_id:
+            self.request_data["order_id"] = {"item": order_id}
+        else:
+            self.request_data["order_id"] = {"item": list(range(1, 1000))}
+        if sup_id:
+            self.request_data["sup_id"] = {"item": sup_id}
+        else:
+            self.request_data["sup_id"] = {"item": list(range(1, 1000))}
+        if status:
+            self.request_data["status"] = {"item": status}
+        else:
+            self.request_data["status"] = {"item": list(range(1, 1000))}
+        if enduser_po:
+            self.request_data["enduser_po"] = enduser_po
+
+        response = self.api.service.getOrders(self.request_data)
         return response

@@ -15,6 +15,7 @@ from frappe.core.api.file import create_new_folder
 from frappe.utils.file_manager import save_file
 from six import BytesIO
 from frappe.utils.background_jobs import enqueue
+import json
 
 
 class COPConnectAPI(Document):
@@ -330,3 +331,70 @@ class COPConnectAPI(Document):
         frappe.msgprint("Vorgang Erfolgreich.")
         frappe.msgprint(str(count_COP_Lieferanten) + " COP Lieferanten vorhanden.")
         frappe.msgprint(str(count_ERPNext_Lieferanten) + " ERPNext Lieferanten vorhanden.")
+
+
+    @frappe.whitelist()
+    def import_orders(self):
+        # Main function that imports data from the WebService via SOAP API and creates new orders in Frappe.
+        
+        # Get settings
+        COPConnect_settings = frappe.get_doc("COPConnect Settings")
+        api = CopAPI(
+            COPConnect_settings.cop_wsdl_url,
+            COPConnect_settings.cop_user,
+            COPConnect_settings.cop_password
+        )
+        
+        # Call the SOAP API to get orders
+        orders_response = api.getOrders(action="status_range")
+
+        # Verify if orders were returned
+        if not orders_response:
+            frappe.throw("No orders found in WebService")
+
+        # Get orders from the XML returned by the SOAP API
+
+        orders = orders_response['item']
+        
+        # Process each order received
+        for order in orders:
+            if not frappe.db.exists("Purchase Order", {"order_id": order["id"]}):
+                po_title = order["sup_name"] + "-"  + order["customer_po"]
+                found_pos = frappe.get_all("Purchase Order", filters={"title": po_title})
+                if len(found_pos) > 0:
+                    print("Purchase Order " + po_title + " bereits vorhanden.")
+                    continue
+                self.create_new_order(order, COPConnect_settings)
+
+    def create_new_order(self, order, COPConnect_settings):
+        po_title = order["sup_name"] + "-"  + order["customer_po"]
+        new_order = frappe.get_doc({
+            "doctype": "Purchase Order",
+            "order_id": order["id"],
+            "title": po_title,
+            "supplier": frappe.get_doc("COP Lieferant", order["sup_name"]).supplier,
+            "transaction_date": order["order_date"],
+            "schedule_date": order["response_date"],
+            "set_warehouse": frappe.get_doc("Stock Settings").default_warehouse,
+            "company": frappe.get_doc("Global Defaults").default_company,
+            "taxes_and_charges": COPConnect_settings.purchase_taxes_and_charges_template_for_imported_cop_orders,
+            "payment_terms_template": COPConnect_settings.payment_terms_template_for_imported_cop_orders,
+            "items": []
+        })
+
+        if len(order["order_items"]) > 0:
+            if len(order['order_items']["item"]) > 0:
+                for item in order["order_items"]["item"]:
+                    po_item_doc = frappe.get_doc({
+                        "doctype": "Purchase Order Item",
+                        "item_code": "MAPID-" + str(item["map_id"]),
+                        "qty": float(str(item["qty_confirmed"]).replace(",",".")),
+                        "schedule_date": frappe.utils.data.today(),
+                        "rate": float(str(item["price_confirmed"]).replace(",","."))
+                    })
+                    new_order.append("items", po_item_doc)
+
+        # Insert the new order
+        new_order.insert()
+        frappe.db.commit()
+        frappe.msgprint(f"New order created: {order['order_id']}")
