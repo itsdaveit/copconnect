@@ -385,14 +385,15 @@ class COPConnectAPI(Document):
         if len(order["order_items"]) > 0:
             if len(order['order_items']["item"]) > 0:
                 for item in order["order_items"]["item"]:
-                    po_item_doc = frappe.get_doc({
-                        "doctype": "Purchase Order Item",
-                        "item_code": "MAPID-" + str(item["map_id"]),
-                        "qty": float(str(item["qty_confirmed"]).replace(",",".")),
-                        "schedule_date": frappe.utils.data.today(),
-                        "rate": float(str(item["price_confirmed"]).replace(",","."))
-                    })
-                    new_order.append("items", po_item_doc)
+                    if frappe.db.exists("Purchase Order Item", {"item_code": "MAPID-" + str(item["map_id"])}):
+                        po_item_doc = frappe.get_doc({
+                            "doctype": "Purchase Order Item",
+                            "item_code": "MAPID-" + str(item["map_id"]),
+                            "qty": float(str(item["qty_confirmed"]).replace(",",".")),
+                            "schedule_date": frappe.utils.data.today(),
+                            "rate": float(str(item["price_confirmed"]).replace(",","."))
+                        })
+                        new_order.append("items", po_item_doc)
 
         # Insert the new order
         new_order.insert()
