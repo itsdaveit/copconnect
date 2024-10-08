@@ -368,7 +368,7 @@ class COPConnectAPI(Document):
         # Process each order received
         for order in orders:
             if not frappe.db.exists("Purchase Order", {"order_id": order["id"]}):
-                po_title = order.get("sup_name", "") + "-"  + order.get("customer_po", "")
+                po_title = order["sup_name"] + "-"  + order["customer_po"]
                 found_pos = frappe.get_all("Purchase Order", filters={"title": po_title})
                 if len(found_pos) > 0:
                     print("Purchase Order " + po_title + " bereits vorhanden.")
@@ -376,16 +376,16 @@ class COPConnectAPI(Document):
                 self.create_new_order(order, COPConnect_settings)
 
     def create_new_order(self, order, COPConnect_settings):
-        po_title = order.get("sup_name", "") + "-"  + order.get("customer_po", "")
+        po_title = order["sup_name"] + "-"  + order["customer_po"]
         new_order = frappe.get_doc({
             "doctype": "Purchase Order",
             "order_id": order["id"],
             "title": po_title,
-            "supplier": frappe.get_doc("COP Lieferant", order.get("sup_name", "")).supplier,
-            "transaction_date": order.get("order_date", ""),
-            "schedule_date": order.get("response_date", ""),
-            "order_type": order.get("order_type", ""),
-            "order_status": order.get("order_status", ""),
+            "supplier": frappe.get_doc("COP Lieferant", order["sup_name"]).supplier,
+            "transaction_date": order["order_date"],
+            "schedule_date": order["response_date"],
+            "order_type": order["order_type"],
+            "order_status": order["order_status"],
             "set_warehouse": frappe.get_doc("Stock Settings").default_warehouse,
             "company": frappe.get_doc("Global Defaults").default_company,
             "taxes_and_charges": COPConnect_settings.purchase_taxes_and_charges_template_for_imported_cop_orders,
@@ -393,8 +393,8 @@ class COPConnectAPI(Document):
             "items": []
         })
 
-        if order.get("order_items"):
-            if order['order_items'].get("item"):
+        if len(order["order_items"]) > 0:
+            if len(order['order_items']["item"]) > 0:
                 for item in order["order_items"]["item"]:
                     po_item_doc = frappe.get_doc({
                         "doctype": "Purchase Order Item",
