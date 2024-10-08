@@ -6,8 +6,6 @@
  "engine": "InnoDB",
  "field_order": [
   "getsuppliers",
-  "column_break_liso",
-  "update_orders",
   "artikel_anlage_section",
   "cop_map_id",
   "column_break_5",
@@ -105,22 +103,13 @@
   {
    "fieldname": "create_orders",
    "fieldtype": "Button",
-   "label": "Create Orders"
-  },
-  {
-   "fieldname": "update_orders",
-   "fieldtype": "Button",
-   "label": "Update orders",
+   "label": "Create Orders",
    "options": "import_orders"
-  },
-  {
-   "fieldname": "column_break_liso",
-   "fieldtype": "Column Break"
   }
  ],
  "issingle": 1,
  "links": [],
- "modified": "2024-10-02 14:12:27.999571",
+ "modified": "2024-10-09 00:38:44.632163",
  "modified_by": "Administrator",
  "module": "COPConnect",
  "name": "COPConnect API",
