@@ -348,7 +348,7 @@ class COPConnectAPI(Document):
         orders_response = api.getOrders(action="status_range")
 
         # Verify if orders were returned
-        if not orders_response or not orders_response.get("order"):
+        if not orders_response:
             frappe.throw("No orders found in WebService")
 
         # Get orders from the XML returned by the SOAP API
