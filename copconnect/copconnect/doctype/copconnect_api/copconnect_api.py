@@ -354,8 +354,7 @@ class COPConnectAPI(Document):
         # Get orders from the XML returned by the SOAP API
 
         # debug
-        for linha in orders_response.splitlines()[:50]:
-            print(linha)
+        print(f"Tipo de orders_response: {type(orders_response)}")
 
 
         orders = orders_response["order"]
