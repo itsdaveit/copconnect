@@ -352,6 +352,7 @@ class COPConnectAPI(Document):
             frappe.throw("No orders found in WebService")
 
         # Get orders from the XML returned by the SOAP API
+        print(orders_response)
         orders = orders_response["order"]
         
         print(f"Orders found: {len(orders)}")
