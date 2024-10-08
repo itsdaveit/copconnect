@@ -355,9 +355,9 @@ class COPConnectAPI(Document):
 
         # debug
         print(f"Tipo de orders_response: {type(orders_response)}")
+        print(orders_response)
 
-
-        orders = orders_response["order"]
+        orders = orders_response
         
         print(f"Orders found: {len(orders)}")
         print(orders)
