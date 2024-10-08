@@ -354,17 +354,8 @@ class COPConnectAPI(Document):
 
         # Get orders from the XML returned by the SOAP API
 
-        # debug
-        print(f"Tipo de orders_response: {type(orders_response)}")
-        print(orders_response)
-        with open("/tmp/orders_response.json", "w") as f:
-            f.write(str(orders_response))
-
         orders = orders_response['item']
         
-        print(f"Orders found: {len(orders)}")
-        print(orders)
-
         # Process each order received
         for order in orders:
             if not frappe.db.exists("Purchase Order", {"order_id": order["id"]}):
