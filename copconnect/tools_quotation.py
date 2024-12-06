@@ -2,6 +2,7 @@ import frappe
 import copconnect.remoteapi
 from copconnect.api import CopAPI
 from zeep.helpers import serialize_object
+from erpnext.stock.utils import get_stock_balance
 
 @frappe.whitelist()
 def check_item_prices_and_availability(docname):
@@ -135,6 +136,35 @@ def get_item_data(map_id):
         ]
 
 
+        # # Lieferantendaten abrufen
+        # supps = frappe.get_all(
+        #     "COP Lieferant",
+        #     filters=[["level", "<=", settings.min_level_for_supplier_part_no]],
+        #     fields=["sup_id", "supplier"]
+        # )
+        # sup_id_list = [el["sup_id"] for el in supps]
+        # supplier_data = serialize_object(api.getArticlesSupplier(map_id, sup_id_list))
+        # items = supplier_data.get('item', [])
+
+        # # Verfügbare Artikel filtern und sortieren
+        # # Nur Artikel mit qty_status == 1 und price_amount >= 0
+        # available_suppliers = [
+        #     supplier for supplier in items
+        #     if supplier['qty_status'] == 1 and supplier['price_amount'] >= 0
+        # ]
+        # sorted_suppliers = sorted(available_suppliers, key=lambda x: x['price_amount'])
+        # cheapest_suppliers = sorted_suppliers[:3]
+
+        # item_data["COP-Daten"]["Lieferanten"] = [
+        #     {
+        #         'Supplier ID': supplier['sup_id'],
+        #         'Supplier Name': supplier['sup_name'],
+        #         'Preis': supplier['price_amount'],
+        #         'Status': supplier['qty_status']
+        #     }
+        #     for supplier in cheapest_suppliers
+        # ]
+
         # Verkaufspreis berechnen
         if cheapest_suppliers:
             lowest_price = cheapest_suppliers[0]['price_amount']
@@ -250,7 +280,10 @@ def generate_html_from_results(results, docname):
 
         lager_status = item['itsdave']['Status Lager']
         status, beschreibung, maßstab = bewertung_angebotspreis(angebotspreis, cop_preis, lpr_preis, lager_status)
-        maßstab_less_euro = float(maßstab.replace(" EUR", "").strip())
+        if maßstab == 'N/A':
+            maßstab_less_euro = 'N/A'
+        else:
+            maßstab_less_euro = float(maßstab.replace(" EUR", "").strip())
 
         html += f"""
         <div class="card">
@@ -313,6 +346,185 @@ def generate_html_from_results(results, docname):
     return html
 
 
+
+# def generate_html_from_results(results):
+
+
+#     html = """
+#     <html>
+#     <head>
+#         <title>Artikelinformationen</title>
+#         <style>
+#             body { font-family: Arial, sans-serif; margin: 15px; }
+#             .card { border: 1px solid #ccc; border-radius: 5px; padding: 15px; margin-bottom: 15px; }
+#             .card h2 { margin-top: 0; }
+#             table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+#             table th, table td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+#             table th { background-color: #f9f9f9; }
+#             .status-green { background-color: #d4edda; color: #155724; padding: 5px; }
+#             .status-yellow { background-color: #fff3cd; color: #856404; padding: 5px; }
+#             .status-red { background-color: #f8d7da; color: #721c24; padding: 5px; }
+#         </style>
+#     </head>
+#     <body>
+#     <h3>Artikelübersicht</h3>
+#     """
+
+#     for item in results:
+#         angebotspreis = float(item.get("Angebotspreis", "0").replace(" EUR", ""))
+#         cop_preis_raw = item['COP-Daten']["Verkaufspreis"]
+
+#         # Überprüfung, ob COP-Preis verfügbar ist
+#         try:
+#             cop_preis = float(cop_preis_raw.replace(" EUR", ""))
+#         except ValueError:
+#             cop_preis = None
+
+#         # Überprüfung, ob COP-Preis verfügbar ist   
+#         try:
+#             lpr_preis = float(item['itsdave']['Verkaufspreis auf Basis von Letztem Einkaufspreis'].replace(" EUR", ""))
+#         except ValueError:
+#             lpr_preis = 0
+
+#         lager_status = item['itsdave']['Status Lager']
+        
+
+#         # Bewertung des Angebotspreises
+#         status, beschreibung, maßstab = bewertung_angebotspreis(angebotspreis, cop_preis, lpr_preis, lager_status)
+
+#         html += f"""
+#         <div class="card">
+#             <div class="{status}">
+#                 <strong>Status:</strong> {beschreibung}
+#             </div>
+#             <h5><strong>{item.get("Artikel-ID", "Unbekannt")}</strong></h5>
+#             <h5>{item.get("Artikel-Name", "Unbekannt")}</h5>
+            
+#             <h5><strong> Lager</strong></h5>
+#              <ul>
+#                 <li><strong>Status Lager:</strong> {lager_status}</li>
+#                 <li><strong>Letzter Einkaufspreis:</strong> {item['itsdave']['Letzter Einkaufspreis']}</li>
+#                 <li><strong>Verkaufspreis letzter Einkaufspreis (LPR):</strong> {lpr_preis:.2f} EUR</li>
+#             </ul>
+#             <h5><strong>Einkaufs-Daten</strong></h5>
+#             <ul>
+#                 <li><strong>Mindestpreis:</strong> {item['COP-Daten']['Preis']['Mindestpreis']}</li>
+#                 <li><strong>EVP:</strong> {item['COP-Daten']['Preis']['EVP']}</li>
+#                 <li><strong>Lieferstatus:</strong> {item['COP-Daten']['Lieferstatus']}</li>
+#                 <li><strong>Verkaufspreis nach COPConnect Pricing Rule:</strong> {cop_preis_raw}</li>
+#                 <li><strong>Angebotspreis:</strong> {angebotspreis:.2f} EUR</li>
+#                 <li><strong>Maßstab:</strong> {maßstab}</li>
+#             </ul>
+            
+#              <h5><strong>Lieferanten</strong></h5>
+#             <table>
+#                 <thead>
+#                     <tr>
+#                         <th>Supplier Name</th>
+#                         <th>ERPNext Lieferant</th>
+#                         <th>Preis</th>
+#                         <th>Status</th>
+#                     </tr>
+#                 </thead>
+#                 <tbody>
+#         """
+#         for supplier in item['COP-Daten']['Lieferanten']:
+#             html += f"""
+#                     <tr>
+#                         <td>{supplier['Supplier Name']}</td>
+#                         <td>{supplier['ERPNext Lieferant']}</td>
+#                         <td>{supplier['Preis']} EUR</td>
+#                         <td>{'Verfügbar' if supplier['Status'] == 1 else 'Nicht verfügbar'}</td>
+#                     </tr>
+#             """
+#         html += """
+#                 </tbody>
+#             </table>
+#         </div>
+#         """
+
+    
+
+#     html += """
+#     </body>
+#     </html>
+#     """
+#     return html
+
+
+
+# def generate_html_from_results(results):
+#     html = """
+#     <html>
+#     <head>
+#         <title>Artikelinformationen</title>
+#         <style>
+#             body { font-family: Arial, sans-serif; margin: 15px; }
+#             .card { border: 1px solid #ccc; border-radius: 5px; padding: 15px; margin-bottom: 15px; }
+#             .card h2 { margin-top: 0; }
+#             table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+#             table th, table td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+#             table th { background-color: #f9f9f9; }
+#         </style>
+#     </head>
+#     <body>
+#     <h3>Artikelübersicht</h3>
+#     """
+
+#     for item in results:
+#         html += f"""
+#         <div class="card">
+#             <h5><strong>{item.get("Artikel-ID", "Unbekannt")}</strong></h5>
+#             <h5>{item.get("Artikel-Name", "Unbekannt")}</h5>
+#             <h5><strong> Lager</strong></h5>
+#              <ul>
+#                 <li><strong>Status Lager:</strong> {item['itsdave']['Status Lager']}</li>
+#                 <li><strong>Letzter Einkaufspreis:</strong> {item['itsdave']['Letzter Einkaufspreis']}</li>
+#                 <li><strong>Verkaufspreis auf Basis von letztem Einkaufspreis:</strong> {item['itsdave']['Verkaufspreis auf Basis von Letztem Einkaufspreis']}</li>
+#             </ul>
+#             <h5><strong>Einkaufs-Daten</strong></h5>
+#             <ul>
+#                 <li><strong>Mindestpreis:</strong> {item['COP-Daten']['Preis']['Mindestpreis']}</li>
+#                 <li><strong>EVP:</strong> {item['COP-Daten']['Preis']['EVP']}</li>
+#                 <li><strong>Lieferstatus:</strong> {item['COP-Daten']['Lieferstatus']}</li>
+#                 <li><strong>Verkaufspreis nach COPConnect Pricing Rule:</strong> {item['COP-Daten']["Verkaufspreis"]}</li>
+#                 <li><strong>Angebotspreis:</strong> {item['Angebotspreis']}</li>
+
+
+#             </ul>
+#             <h5><strong>Lieferanten</strong></h5>
+#             <table>
+#                 <thead>
+#                     <tr>
+#                         <th>Supplier ID</th>
+#                         <th>Supplier Name</th>
+#                         <th>Preis</th>
+#                         <th>Status</th>
+#                     </tr>
+#                 </thead>
+#                 <tbody>
+#         """
+#         for supplier in item['COP-Daten']['Lieferanten']:
+#             html += f"""
+#                     <tr>
+#                         <td>{supplier['Supplier ID']}</td>
+#                         <td>{supplier['Supplier Name']}</td>
+#                         <td>{supplier['Preis']} EUR</td>
+#                         <td>{'Verfügbar' if supplier['Status'] == 1 else 'Nicht verfügbar'}</td>
+#                     </tr>
+#             """
+#         html += """
+#                 </tbody>
+#             </table>
+#         </div>
+#         """
+
+#     html += """
+#     </body>
+#     </html>
+#     """
+#     return html
+
 @frappe.whitelist()
 def set_offer_price(docname, article_id, rate):
 
@@ -348,6 +560,28 @@ def set_offer_price(docname, article_id, rate):
 
     return "success"
 
+    # try:
+    #     # Lade das Quotation-Dokument
+    #     quotation = frappe.get_doc("Quotation", docname)
+    #     print(quotation)
+        
+    #     # Finde das passende Item und aktualisiere den Preis
+    #     for item in quotation.items:
+    #         if item.item_code == article_id:
+    #             item.rate = rate
+    #             print(item.rate)
+    #             break
+    #     else:
+    #         # Artikel nicht gefunden
+    #         return "Artikel nicht im Angebot gefunden."
+        
+    #     # Speichere die Änderungen
+    #     quotation.save()
+    #     frappe.db.commit()
+    #     return "success"
+    # except Exception as e:
+    #     frappe.log_error(frappe.get_traceback(), "Fehler beim Setzen des Angebotspreises")
+    #     return str(e)
 
 
 def get_best_pricing_rule(item_code, buying_price, settings=None, item_doc=None):
