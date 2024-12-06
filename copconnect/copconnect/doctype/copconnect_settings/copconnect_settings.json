@@ -20,6 +20,7 @@
   "min_level_for_selling_price",
   "price_list_buying",
   "price_list_selling",
+  "qty_of_suppliers",
   "misc_settings_section",
   "use_enqueue",
   "get_datasheet",
@@ -141,12 +142,17 @@
    "fieldname": "use_base_url",
    "fieldtype": "Check",
    "label": "Base URL verwenden"
+  },
+  {
+   "fieldname": "qty_of_suppliers",
+   "fieldtype": "Int",
+   "label": "Anzahl der Lieferanten im Angebot Preis und Verf\u00fcgbarkeit"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2021-11-28 23:23:47.731585",
+ "modified": "2024-12-04 11:47:02.648846",
  "modified_by": "Administrator",
  "module": "COPConnect",
  "name": "COPConnect Settings",
@@ -166,5 +172,6 @@
  "quick_entry": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }
