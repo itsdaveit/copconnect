@@ -15,6 +15,7 @@ from frappe.core.api.file import create_new_folder
 from frappe.utils.file_manager import save_file
 from six import BytesIO
 from frappe.utils.background_jobs import enqueue
+from copconnect.custom.item_before_insert import parse_series_from_name, get_max_series_number, reset_naming_counter_after_rename
 
 
 class COPConnectAPI(Document):
@@ -39,6 +40,7 @@ class COPConnectAPI(Document):
         
         return new_folder_name
     
+    @frappe.whitelist()
     def get_item(self, map_id=False):
         settings = frappe.get_doc("COPConnect Settings")
         api = CopAPI(
@@ -60,13 +62,40 @@ class COPConnectAPI(Document):
                 self.get_item_images()
                 self.get_item_datasheet()
 
-
-    def _create_item(self,cop_item_row):
+ 
+    def _create_item(self, cop_item_row):
+        # 1) Baue das Item DICT (mit MAPID-... als item_code, WIRD ABER ÜBERSCHRIEBEN)
         item_dict = self._get_item_dict(cop_item_row)
-        item_doc = frappe.get_doc(item_dict)
-        item_doc.save()
-        return item_doc.item_code
 
+        # 2) Vor dem Insert Naming-Rule-Kandidaten laden (zur späteren Identifikation)
+        rules = frappe.get_all(
+            "Document Naming Rule",
+            filters={"document_type": "Item"},
+            fields=["name", "prefix", "prefix_digits", "counter", "priority"],
+            order_by="priority desc",
+        )
+
+        # 3) Insert (Naming Rule vergibt z. B. ITEM-00071)
+        item_doc = frappe.get_doc(item_dict)
+        item_doc.insert()
+        generated_name = item_doc.name  # z. B. 'ITEM-00071'
+
+        # 4) Auf MAPID umbenennen
+        desired_code = item_dict["item_code"]  # z. B. 'MAPID-123456'
+        if generated_name != desired_code:
+            # Kollision prüfen:
+            if frappe.db.exists("Item", desired_code):
+                frappe.throw(f"Item Code {desired_code} existiert bereits.")
+            frappe.rename_doc("Item", generated_name, desired_code, force=True, merge=False)
+
+        # 5) Counter der Naming Rule korrigieren (ohne Lücke)
+        result = reset_naming_counter_after_rename("Item", generated_name)
+        print(result)
+        
+        
+        return desired_code
+
+        
     def _get_item_dict(self, cop_item_row):
         item_fields_matching_table = {
             "doctype": "Item",
@@ -112,6 +141,7 @@ class COPConnectAPI(Document):
         else:
             frappe.throw("Artielnummer muss mit MAPID- anfangen.")
         
+
     def get_item_datasheet(self):
         settings = frappe.get_single("COPConnect Settings")
         api = CopAPI(
