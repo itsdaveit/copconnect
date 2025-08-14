@@ -11,6 +11,8 @@ import frappe
 import glob
 import os
 import csv
+from copconnect.custom.item_before_insert import parse_series_from_name, get_max_series_number, reset_naming_counter_after_rename
+
 
 
 class COPConnectimports(Document):
@@ -149,39 +151,41 @@ class COPConnectimports(Document):
 
 
 
-    def create_item(self, item_data, COPConnect_settings, file_type):
+    # def create_item(self, item_data, COPConnect_settings, file_type):
 
-        item_code = "MAPID-" + item_data["map_id"]
-        found_items = frappe.get_all("Item", filters={"item_code": item_code }, fields=["name", "item_code"] )
-        COPConnect_Supplier_name = frappe.get_doc("COP Lieferant", item_data["sup_name"]).supplier
-        if len(found_items) >= 1:
-            print("Item " + item_code + " allready exists.")
-            item_doc = frappe.get_doc("Item", item_code)
-            something_changed = False
-            standard_rate = self.calculate_standard_rate(item_data)
-            if standard_rate != False:
-                if item_doc.standard_rate != standard_rate:
-                    item_doc.standard_rate = standard_rate
-                    something_changed = True
-            if item_doc.default_supplier != COPConnect_Supplier_name:
-                item_doc.default_supplier = COPConnect_Supplier_name
-                something_changed = True
-            if something_changed:
-                item_doc.save()
-        else:
-            item_doc = frappe.get_doc({"doctype": "Item",
-                                        "item_code": item_code,
-                                        "item_group": COPConnect_settings.destination_item_group,
-                                        "item_name": item_data["desc_short"][:140],
-                                        "default_supplier": COPConnect_Supplier_name,
-                                        "is_stock_item": 1
-            })
-            standard_rate = self.calculate_standard_rate(item_data)
-            if standard_rate != False:
-                item_doc.standard_rate =  standard_rate
-            item_doc.insert()
-        if file_type == "COP_order":
-            self.set_supplier_item_code(item_data, item_code)
+    #     item_code = "MAPID-" + item_data["map_id"]
+    #     found_items = frappe.get_all("Item", filters={"item_code": item_code }, fields=["name", "item_code"] )
+    #     COPConnect_Supplier_name = frappe.get_doc("COP Lieferant", item_data["sup_name"]).supplier
+    #     if len(found_items) >= 1:
+    #         print("Item " + item_code + " allready exists.")
+    #         item_doc = frappe.get_doc("Item", item_code)
+    #         something_changed = False
+    #         standard_rate = self.calculate_standard_rate(item_data)
+    #         if standard_rate != False:
+    #             if item_doc.standard_rate != standard_rate:
+    #                 item_doc.standard_rate = standard_rate
+    #                 something_changed = True
+    #         if item_doc.default_supplier != COPConnect_Supplier_name:
+    #             item_doc.default_supplier = COPConnect_Supplier_name
+    #             something_changed = True
+    #         if something_changed:
+    #             item_doc.save()
+    #     else:
+    #         item_doc = frappe.get_doc({"doctype": "Item",
+    #                                     "item_code": item_code,
+    #                                     "item_group": COPConnect_settings.destination_item_group,
+    #                                     "item_name": item_data["desc_short"][:140],
+    #                                     "default_supplier": COPConnect_Supplier_name,
+    #                                     "is_stock_item": 1
+    #         })
+    #         # Der Hook item_before_insert kümmert sich um das Naming
+    #         item_doc.insert()
+    #         standard_rate = self.calculate_standard_rate(item_data)
+    #         if standard_rate != False:
+    #             item_doc.standard_rate = standard_rate
+    #             item_doc.save()
+    #     if file_type == "COP_order":
+    #         self.set_supplier_item_code(item_data, item_code)
 
     def set_supplier_item_code(self, item_data, item_code):
         COPConnect_Supplier_name = frappe.get_doc("COP Lieferant", item_data["sup_name"]).supplier
@@ -198,6 +202,98 @@ class COPConnectimports(Document):
                                         "supplier_part_no": item_data["sup_aid"]})
         item_doc.supplier_items.append(supplier_item_doc)
         item_doc.save()
+    def create_item(self, item_data, COPConnect_settings, file_type):
+        item_code = "MAPID-" + item_data["map_id"]
+
+        # Existenz prüfen (per item_code / name)
+        found_items = frappe.get_all("Item", filters={"item_code": item_code}, fields=["name", "item_code"])
+        COPConnect_Supplier_name = frappe.get_doc("COP Lieferant", item_data["sup_name"]).supplier
+
+        if len(found_items) >= 1:
+            print("Item " + item_code + " allready exists.")
+            item_doc = frappe.get_doc("Item", item_code)
+            something_changed = False
+
+            standard_rate = self.calculate_standard_rate(item_data)
+            if standard_rate is not False and item_doc.standard_rate != standard_rate:
+                item_doc.standard_rate = standard_rate
+                something_changed = True
+
+            if item_doc.default_supplier != COPConnect_Supplier_name:
+                item_doc.default_supplier = COPConnect_Supplier_name
+                something_changed = True
+
+            if something_changed:
+                item_doc.save()
+
+        else:
+            # 1) Naming Rule(s) vorher laden (für spätere Identifikation + Counter-Reset)
+            rules = frappe.get_all(
+                "Document Naming Rule",
+                filters={
+                    "document_type": "Item",
+                    "disabled": 0  # Nur aktive Rules
+                },
+                fields=["name", "prefix", "prefix_digits", "counter", "priority"],
+                order_by="priority desc",
+            )
+            
+            # Prüfen ob aktive Rules gefunden wurden
+            if not rules:
+                frappe.throw("Keine aktiven Document Naming Rules für Items gefunden!")
+
+            # 2) Item zunächst normal einfügen → Naming Series vergibt z. B. ITEM-.00071
+            item_doc = frappe.get_doc({
+                "doctype": "Item",
+                "item_code": item_code,  # wird von der Series ggf. ignoriert, deshalb danach rename
+                "item_group": COPConnect_settings.destination_item_group,
+                "item_name": item_data["desc_short"][:140],
+                "default_supplier": COPConnect_Supplier_name,
+                "is_stock_item": 1,
+            })
+
+            # Transaktion absichern (optional, aber empfehlenswert)
+            frappe.db.savepoint("sp_copconnect_create_item_import2")
+            try:
+                item_doc.insert()  # Naming Rule vergibt Seriennamen
+                generated_name = item_doc.name  # z. B. 'ITEM-.00071'
+                desired_code = item_code        # z. B. 'MAPID-123456'
+
+                # 3) Auf MAPID-... umbenennen (falls verschieden)
+                if generated_name != desired_code:
+                    if frappe.db.exists("Item", desired_code):
+                        frappe.throw(f"Item Code {desired_code} existiert bereits.")
+                    frappe.rename_doc(
+                        doctype="Item",
+                        old=generated_name,
+                        new=desired_code,
+                        force=True,
+                        merge=False,
+                        ignore_permissions=True,
+                    )
+
+                    # 4) Counter der Naming Rule korrekt zurücksetzen
+                    result = reset_naming_counter_after_rename("Item", generated_name, debug=True)
+                    print("Counter Reset Ergebnis:", result)
+
+                # 5) Standard Rate setzen (nach Insert/Rename) und speichern falls nötig
+                standard_rate = self.calculate_standard_rate(item_data)
+                if standard_rate is not False:
+                    # frisch laden, falls rename_doc intern neu geladen hat
+                    item_doc = frappe.get_doc("Item", desired_code)
+                    if item_doc.standard_rate != standard_rate:
+                        item_doc.standard_rate = standard_rate
+                        item_doc.save()
+
+                frappe.db.release_savepoint("sp_copconnect_create_item_import2")
+
+            except Exception:
+                frappe.db.rollback_to_savepoint("sp_copconnect_create_item_import2")
+                raise
+
+        # Supplier Item Code bei Bedarf
+        if file_type == "COP_order":
+            self.set_supplier_item_code(item_data, item_code)
 
     def check_csv_format(self, csv_rows, file_type, csv_headers):
         #COP Merkzelltel Format prüfen

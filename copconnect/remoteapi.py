@@ -15,6 +15,7 @@ from pprint import pprint
 import time
 from frappe import _
 from frappe.utils import get_site_name, get_site_base_path, get_site_url
+from copconnect.custom.item_before_insert import reset_naming_counter_after_rename
 
 
 @frappe.whitelist()
@@ -61,7 +62,6 @@ Erstellen oder aktualisieren von Artikel wird über get_item durchgeführt.
 
 def get_item(map_id, start_dt):
     settings = frappe.get_doc("COPConnect Settings")
-    frappe.db.set_default("item_naming_by","Item Code")
     api = CopAPI(settings.cop_wsdl_url, settings.cop_user, settings.cop_password)
     
     r = api.getArticles("mapid:" + str(map_id))
@@ -110,9 +110,7 @@ def get_item(map_id, start_dt):
         try:
             item_doc.save()
             frappe.db.commit()
-            frappe.db.set_default("item_naming_by","Naming Series")
         except Exception as e:
-            frappe.db.set_default("item_naming_by","Naming Series")
             rdict = {
                 "state": "500",
                 "message": str(e)
@@ -388,14 +386,44 @@ def apply_pricing_rule(rule, buying_price):
         
 
 def _create_item(cop_item_row):
+    # 1) Naming Rule laden
+    rules = frappe.get_all(
+        "Document Naming Rule",
+        filters={
+            "document_type": "Item",
+            "disabled": 0  # Nur aktive Rules
+        },
+        fields=["name", "prefix", "prefix_digits", "counter", "priority"],
+        order_by="priority desc",
+    )
+    
+    if not rules:
+        frappe.throw("Keine aktiven Document Naming Rules für Items gefunden!")
+
+    # 2) Item mit Naming Rule erstellen
     item_dict = _get_item_dict(cop_item_row)
     item_doc = frappe.get_doc(item_dict)
 
+    # 3) Barcodes und Defaults setzen
     for key in item_dict:
         if key in ["barcode", "barcode_mapid"]:
             item_doc = _set_barcode(item_doc, key, item_dict[key])
-    itemdoc = _set_item_defaults(item_doc)
-    itemdoc = _validate_barcodes(item_doc)
+    item_doc = _set_item_defaults(item_doc)
+    item_doc = _validate_barcodes(item_doc)
+
+    # 4) Insert (Naming Rule vergibt Seriennamen)
+    item_doc.insert()
+    generated_name = item_doc.name  # z.B. 'ITEM-.00071'
+    desired_code = item_dict["item_code"]  # z.B. 'MAPID-123456'
+
+    # 5) Umbenennen falls nötig
+    if generated_name != desired_code:
+        frappe.rename_doc("Item", generated_name, desired_code, force=True)
+        
+        # 6) Counter zurücksetzen
+        result = reset_naming_counter_after_rename("Item", generated_name, debug=True)
+        print("Counter Reset Ergebnis:", result)
+
     return item_doc
 
 def _update_item(cop_item_row, item_doc):
