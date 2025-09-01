@@ -202,6 +202,7 @@ class COPConnectimports(Document):
                                         "supplier_part_no": item_data["sup_aid"]})
         item_doc.supplier_items.append(supplier_item_doc)
         item_doc.save()
+        
     def create_item(self, item_data, COPConnect_settings, file_type):
         item_code = "MAPID-" + item_data["map_id"]
 
@@ -237,7 +238,7 @@ class COPConnectimports(Document):
                 fields=["name", "prefix", "prefix_digits", "counter", "priority"],
                 order_by="priority desc",
             )
-            
+
             # Prüfen ob aktive Rules gefunden wurden
             if not rules:
                 frappe.throw("Keine aktiven Document Naming Rules für Items gefunden!")
@@ -252,7 +253,7 @@ class COPConnectimports(Document):
                 "is_stock_item": 1,
             })
 
-            # Transaktion absichern (optional, aber empfehlenswert)
+            # Transaktion absichern
             frappe.db.savepoint("sp_copconnect_create_item_import2")
             try:
                 item_doc.insert()  # Naming Rule vergibt Seriennamen
@@ -269,7 +270,6 @@ class COPConnectimports(Document):
                         new=desired_code,
                         force=True,
                         merge=False,
-                        ignore_permissions=True,
                     )
 
                     # 4) Counter der Naming Rule korrekt zurücksetzen
@@ -288,12 +288,13 @@ class COPConnectimports(Document):
                 frappe.db.release_savepoint("sp_copconnect_create_item_import2")
 
             except Exception:
-                frappe.db.rollback_to_savepoint("sp_copconnect_create_item_import2")
+                frappe.db.rollback(save_point="sp_copconnect_create_item_import2")
                 raise
 
         # Supplier Item Code bei Bedarf
         if file_type == "COP_order":
             self.set_supplier_item_code(item_data, item_code)
+
 
     def check_csv_format(self, csv_rows, file_type, csv_headers):
         #COP Merkzelltel Format prüfen
